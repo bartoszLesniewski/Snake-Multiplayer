@@ -1,5 +1,7 @@
 import sys
 import pygame
+import pygame_menu
+from pygame_menu import Theme
 
 from Apple import Apple
 from Snake import Snake
@@ -26,6 +28,22 @@ class Game:
 
             if not self.check_game_over():
                 self.update_screen()
+
+    def menu(self):
+        font = pygame_menu.font.FONT_8BIT
+        my_theme = Theme(title_font=font, widget_font=font, widget_font_size=50, widget_margin=(0, 30),
+                         title_font_color=(255, 255, 255), widget_font_color=(255, 255, 255),
+                         title_background_color=(0, 100, 0),
+                         selection_color=(255, 255, 255, 0),
+                         focus_background_color=(0, 100, 0),
+                         background_color=pygame_menu.baseimage.BaseImage(
+                             image_path="img/background.jpg",
+                             drawing_mode=pygame_menu.baseimage.IMAGE_MODE_REPEAT_XY
+                         ))
+        menu = pygame_menu.Menu("Main menu", 800, 600, theme=my_theme)
+        menu.add.button("Play", self.play)
+        menu.add.button("Exit", pygame_menu.events.EXIT)
+        menu.mainloop(self.screen)
 
     def update_screen(self):
         # self.screen.fill((0, 0, 0))
