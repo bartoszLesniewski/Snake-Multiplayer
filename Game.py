@@ -35,7 +35,8 @@ class Game:
         self.apple.draw(self.screen)
         self.snake.change_direction(pygame.key.get_pressed())
         self.snake.move(self.check_collision())
-        print("Apple position: " + str(self.apple.rect.x) + " " + str(self.apple.rect.y))
+        print(self.snake.head.rect.x, self.snake.head.rect.y)
+        # print("Apple position: " + str(self.apple.rect.x) + " " + str(self.apple.rect.y))
         pygame.display.update()
         self.fps.tick(FPS)
 
@@ -44,11 +45,26 @@ class Game:
             self.apple = Apple()
             return True
 
+        for cnt, segment in enumerate(self.snake.segments):
+            if segment != self.snake.head and self.snake.head.rect.colliderect(segment.rect):
+                self.snake.segments = [self.snake.segments[i] for i in range(cnt)]
+                return False
+
         return False
 
     def check_game_over(self):
-        if self.snake.head.rect.x < 0 or self.snake.head.rect.x > WIDTH \
-                or self.snake.head.rect.y < 0 or self.snake.head.rect.y > HEIGHT:
+        result = False
+        if self.snake.head.rect.x < 0 or self.snake.head.rect.x + SEGMENT_SIZE > WIDTH \
+                or self.snake.head.rect.y < 0 or self.snake.head.rect.y + SEGMENT_SIZE > HEIGHT:
+            result = True
+
+        # game over when collision with tail
+        # for segment in self.snake.segments:
+        #    if segment != self.snake.head and self.snake.head.rect.colliderect(segment.rect):
+        #        result = True
+        #       break
+
+        if result:
             self.screen.blit(self.background, (0, 0))
             font = pygame.font.SysFont("Arial", 120)
             surface = font.render("GAME OVER", True, (255, 255, 255))
@@ -56,8 +72,4 @@ class Game:
             self.screen.blit(surface, rect)
             pygame.display.update()
 
-            return True
-
-        return False
-
-
+        return result
