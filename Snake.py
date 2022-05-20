@@ -20,7 +20,8 @@ class Snake (pygame.sprite.Sprite):
         self.segments.append(Segment(400, 340))
         self.segments.append(Segment(400, 360))
 
-    def move(self):
+    def move(self, new_segment):
+        # print("Start number of segments: " + str(len(self.segments)))
         new_head = self.create_head(self.head.rect.x, self.head.rect.y)
         if self.direction == Direction.UP:
             new_head.rect.move_ip(0, -SEGMENT_SIZE)
@@ -33,8 +34,12 @@ class Snake (pygame.sprite.Sprite):
 
         self.segments[0] = Segment(self.segments[0].rect.x, self.segments[0].rect.y)
         self.segments.insert(0, new_head)
-        self.segments.pop()
         self.head = new_head
+
+        if not new_segment:
+            self.segments.pop()
+
+        # print("End number of segments: " + str(len(self.segments)))
 
     @staticmethod
     def create_head(x, y):
@@ -58,4 +63,3 @@ class Snake (pygame.sprite.Sprite):
         elif pressed_keys[pygame.K_LEFT] and self.direction != Direction.RIGHT:
             self.direction = Direction.LEFT
 
-        # TODO: detect collision with screen edges (game over or appear on the opposite side)

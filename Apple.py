@@ -13,8 +13,8 @@ class Apple(pygame.sprite.Sprite):
 
     @staticmethod
     def rand_position():
-        x = random.randint(1, WIDTH/SEGMENT_SIZE) * SEGMENT_SIZE
-        y = random.randint(1, HEIGHT/SEGMENT_SIZE) * SEGMENT_SIZE
+        x = random.randint(0, WIDTH/SEGMENT_SIZE - 1) * SEGMENT_SIZE
+        y = random.randint(0, HEIGHT/SEGMENT_SIZE - 1) * SEGMENT_SIZE
 
         return x, y
 
