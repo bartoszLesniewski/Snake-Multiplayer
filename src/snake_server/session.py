@@ -21,6 +21,17 @@ class Session:
         self.winner: Connection | None = None
         self.task: asyncio.Task | None = None
 
+    async def start(self) -> None:
+        self.running = True
+        await asyncio.gather(
+            *(conn.send_session_start(self) for conn in self.connections.values())
+        )
+        self.task = asyncio.create_task(self.run())
+
+    async def run(self) -> None:
+        # TODO: implement game loop along with proper syncing
+        ...
+
     def stop(self) -> None:
         if self.task is not None:
             self.task.cancel()

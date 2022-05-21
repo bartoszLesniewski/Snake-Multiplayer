@@ -154,6 +154,22 @@ class Connection:
         self.log.info("Created a session with code %r", self.session.code)
         await self.session.connect(self)
 
+    async def handle_start_session(self, data: dict[str, Any]) -> None:
+        if self.session is None:
+            await self.send_message(MsgType.NOT_IN_SESSION, {})
+            return
+
+        if self.session.running:
+            await self.send_message(MsgType.INVALID_SESSION, {"exists": True})
+            return
+
+        if self.session.owner is not self:
+            await self.send_message(MsgType.NOT_SESSION_OWNER, {})
+            return
+
+        await self.session.start()
+        self.log.info("Started a session with code %r", self.session.code)
+
     async def send_session_join(self, session: Session, key: str) -> None:
         payload = {"code": session.code, "key": key, "owner": session.owner.key}
         if key == self.key:
@@ -179,3 +195,6 @@ class Connection:
             MsgType.SESSION_END,
             {"code": session.code, "winner": session.winner and session.winner.key},
         )
+
+    async def send_session_start(self, session: Session) -> None:
+        await self.send_message(MsgType.SESSION_START, {"code": session.code})
