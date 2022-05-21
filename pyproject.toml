@@ -1,0 +1,10 @@
+[build-system]
+requires = ["flit_core >=3.7.1,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "snake_server"
+authors = [{name = "Jakub Kuczys"}, {name = "Bartosz Leśniewski"}]
+dynamic = ["version", "description"]
+classifiers = ["Private :: Do Not Upload"]
+requires-python = ">=3.10"
