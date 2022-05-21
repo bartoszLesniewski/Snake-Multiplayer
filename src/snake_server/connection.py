@@ -6,6 +6,8 @@ import logging
 from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING, Any
 
+from .enums import MsgType
+
 if TYPE_CHECKING:
     from .app import App
 
@@ -115,3 +117,10 @@ class Connection:
         self.app.connections.pop(self.key, None)
         if not closed_by_client:
             self.log.info("Connection closed by the server.")
+
+    async def send_message(self, msg_type: MsgType, data: dict[str, Any]) -> None:
+        serialized = json.dumps(
+            {"type": msg_type.value, "data": data}, separators=(",", ":")
+        )
+        self.writer.write(f"{serialized}\n".encode())
+        await self.writer.drain()
