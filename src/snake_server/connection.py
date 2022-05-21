@@ -10,6 +10,7 @@ from .enums import MsgType
 
 if TYPE_CHECKING:
     from .app import App
+    from .session import Session
 
 _log = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class Connection:
         self.reader = reader
         self.writer = writer
         self.host, self.port = writer.transport.get_extra_info("peername")
+        self.session: Session | None = None
         self.log = ConnectionLoggerAdapter(_log, {"connection_key": self.key})
 
     @property
@@ -124,3 +126,18 @@ class Connection:
         )
         self.writer.write(f"{serialized}\n".encode())
         await self.writer.drain()
+
+    async def handle_create_session(self, data: dict[str, Any]) -> None:
+        self.session = await self.app.create_session(self)
+        self.log.info("Created a session with code %r", self.session.code)
+        await self.session.connect(self)
+
+    async def send_session_join(self, session: Session, key: str) -> None:
+        payload = {"code": session.code, "key": key, "owner": session.owner.key}
+        if key == self.key:
+            self.log.info("Joined a session with code %r", session.code)
+            payload["connections"] = list(session.connections)
+        await self.send_message(
+            MsgType.SESSION_JOIN,
+            payload,
+        )

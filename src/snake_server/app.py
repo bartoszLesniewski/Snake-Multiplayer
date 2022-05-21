@@ -6,6 +6,8 @@ import os
 import sys
 
 from .connection import Connection
+from .session import Session
+from .utils import generate_invite_code
 
 log = logging.getLogger(__name__)
 
@@ -14,6 +16,8 @@ class App:
     def __init__(self) -> None:
         self.host = "127.0.0.1"
         self.port = 8888
+        self.sessions: dict[str, Session] = {}
+        self.sessions_lock = asyncio.Lock()
         self.connections: dict[str, Connection] = {}
 
     async def run(self) -> int:
@@ -21,6 +25,11 @@ class App:
         await self.run_server()
 
     async def close(self) -> None:
+        async with self.sessions_lock:
+            for session in self.sessions.values():
+                session.stop()
+            self.sessions.clear()
+
         for conn in list(self.connections.values()):
             await conn.close()
         self.connections.clear()
@@ -61,3 +70,24 @@ class App:
         self.connections[conn.key] = conn
         log.info("Accepted a connection from %s:%s", conn.host, conn.port)
         await conn.run()
+
+    async def create_session(self, owner: Connection) -> Session:
+        invite_code = ""
+        async with self.sessions_lock:
+            for _ in range(5):
+                invite_code = generate_invite_code()
+                if invite_code not in self.sessions:
+                    break
+            else:
+                raise RuntimeError(
+                    "Failed to generate unique invite code for the session."
+                )
+
+            session = Session(self, owner, invite_code)
+            self.sessions[invite_code] = session
+
+        return session
+
+    async def remove_session(self, session: Session) -> None:
+        async with self.sessions_lock:
+            self.sessions.pop(session.code, None)
