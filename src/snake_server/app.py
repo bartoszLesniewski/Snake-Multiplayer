@@ -5,6 +5,8 @@ import logging
 import os
 import sys
 
+from .connection import Connection
+
 log = logging.getLogger(__name__)
 
 
@@ -12,13 +14,16 @@ class App:
     def __init__(self) -> None:
         self.host = "127.0.0.1"
         self.port = 8888
+        self.connections: dict[str, Connection] = {}
 
     async def run(self) -> int:
         self.setup_logging()
         await self.run_server()
 
     async def close(self) -> None:
-        ...
+        for conn in list(self.connections.values()):
+            await conn.close()
+        self.connections.clear()
 
     def setup_logging(self) -> None:
         if os.path.exists("latest.log"):
@@ -52,6 +57,7 @@ class App:
     async def socket_handler(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
+        conn = Connection(self, reader, writer)
+        self.connections[conn.key] = conn
         log.info("Accepted a connection from %s:%s", conn.host, conn.port)
-        writer.close()
-        await writer.wait_closed()
+        await conn.run()
