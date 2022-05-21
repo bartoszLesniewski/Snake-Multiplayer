@@ -35,3 +35,26 @@ class Session:
                 if conn != connection.key
             )
         )
+
+    async def disconnect(self, connection: Connection) -> None:
+        self.connections.pop(connection.key, None)
+        if self.connections:
+            if self.owner is connection:
+                self.owner = next(iter(self.connections))
+            await asyncio.gather(
+                *(
+                    conn.send_session_leave(self, connection.key)
+                    for conn in self.connections.values()
+                )
+            )
+        else:
+            self.stop()
+            await self.app.remove_session(self)
+            log.info("Session with code %r ended.", self.code)
+
+        await connection.send_session_leave(self, connection.key)
+        if self.running and len(self.connections) == 1:
+            self.winner = self.owner
+            await self.owner.send_session_end(self)
+            await self.app.remove_session(self)
+            log.info("Session with code %r ended.", self.code)

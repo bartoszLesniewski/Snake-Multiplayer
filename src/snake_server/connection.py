@@ -109,6 +109,8 @@ class Connection:
         await self.close(closed_by_client=True)
 
     async def close(self, *, closed_by_client: bool = False) -> None:
+        if self.session is not None:
+            await self.session.disconnect(self)
         self.writer.close()
         try:
             await self.writer.wait_closed()
@@ -127,6 +129,26 @@ class Connection:
         self.writer.write(f"{serialized}\n".encode())
         await self.writer.drain()
 
+    async def handle_join(self, data: dict[str, Any]) -> None:
+        code = data["code"]
+        try:
+            session = self.app.sessions[code]
+        except KeyError:
+            await self.send_message(MsgType.INVALID_SESSION, {"exists": False})
+            return
+        if session.running:
+            await self.send_message(MsgType.INVALID_SESSION, {"exists": True})
+            return
+
+        previous_session = self.session
+        if previous_session is session or self.key in session.connections:
+            self.log.warning("Client seems to already be in this session.")
+        if previous_session is not None and previous_session is not session:
+            await previous_session.disconnect(self)
+
+        self.session = session
+        await self.session.connect(self)
+
     async def handle_create_session(self, data: dict[str, Any]) -> None:
         self.session = await self.app.create_session(self)
         self.log.info("Created a session with code %r", self.session.code)
@@ -140,4 +162,20 @@ class Connection:
         await self.send_message(
             MsgType.SESSION_JOIN,
             payload,
+        )
+
+    async def send_session_leave(self, session: Session, key: str) -> None:
+        if key == self.key:
+            self.log.info("Left a session with code %r", session.code)
+            self.session = None
+        if not self.writer.is_closing():
+            await self.send_message(
+                MsgType.SESSION_LEAVE,
+                {"code": session.code, "key": key, "owner": session.owner.key},
+            )
+
+    async def send_session_end(self, session: Session) -> None:
+        await self.send_message(
+            MsgType.SESSION_END,
+            {"code": session.code, "winner": session.winner and session.winner.key},
         )
