@@ -181,7 +181,7 @@ class Connection:
             "player": player.to_dict(),
             "owner_key": session.owner.key,
         }
-        if key == self.key:
+        if player.key == self.key:
             self.log.info("Joined a session with code %r", session.code)
             payload["players"] = [
                 player.to_dict() for player in session.players.values()
