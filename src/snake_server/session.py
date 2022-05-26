@@ -13,8 +13,9 @@ log = logging.getLogger(__name__)
 
 
 class SessionPlayer:
-    def __init__(self, conn: Connection) -> None:
+    def __init__(self, conn: Connection, name: str) -> None:
         self.conn = conn
+        self.name = name
         self.alive = True
         self.chunks: deque[tuple[int, int]] = deque()
 
@@ -25,6 +26,7 @@ class SessionPlayer:
     def to_dict(self) -> dict[str, Any]:
         return {
             "key": self.key,
+            "name": self.name,
             "chunks": [list(chunk) for chunk in self.chunks],
         }
 
@@ -33,9 +35,11 @@ class SessionPlayer:
 
 
 class Session:
-    def __init__(self, app: App, owner: Connection, code: str) -> None:
+    def __init__(
+        self, *, app: App, owner: Connection, owner_name: str, code: str
+    ) -> None:
         self.app = app
-        self.owner = SessionPlayer(owner)
+        self.owner = SessionPlayer(owner, owner_name)
         self.code = code
 
         #: stores all players that were ever in the running session,
@@ -48,6 +52,9 @@ class Session:
 
         self.running = False
         self.task: asyncio.Task | None = None
+
+    def is_name_taken(self, name: str) -> bool:
+        return any(player.name == name for player in self.players.values())
 
     async def start(self) -> None:
         self.running = True
@@ -85,8 +92,8 @@ class Session:
             self.task.cancel()
         self.running = False
 
-    async def connect(self, connection: Connection) -> None:
-        player = SessionPlayer(connection)
+    async def connect(self, connection: Connection, name: str) -> None:
+        player = SessionPlayer(connection, name)
         self.players[player.key] = player
         self.alive_players[player.key] = player
         await asyncio.gather(

@@ -131,6 +131,7 @@ class Connection:
 
     async def handle_join(self, data: dict[str, Any]) -> None:
         code = data["code"]
+        player_name = data["player_name"]
         try:
             session = self.app.sessions[code]
         except KeyError:
@@ -146,11 +147,16 @@ class Connection:
         if previous_session is not None and previous_session is not session:
             await previous_session.disconnect(self)
 
+        if session.is_name_taken(player_name):
+            await self.send_message(MsgType.PLAYER_NAME_ALREADY_TAKEN, {})
+            return
+
         self.session = session
-        await self.session.connect(self)
+        await self.session.connect(self, player_name)
 
     async def handle_create_session(self, data: dict[str, Any]) -> None:
-        self.session = await self.app.create_session(self)
+        player_name = data["player_name"]
+        self.session = await self.app.create_session(self, player_name)
         self.log.info("Created and joined a session with code %r", self.session.code)
 
     async def handle_start_session(self, data: dict[str, Any]) -> None:

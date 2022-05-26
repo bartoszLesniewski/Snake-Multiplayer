@@ -71,7 +71,7 @@ class App:
         log.info("Accepted a connection from %s:%s", conn.host, conn.port)
         await conn.run()
 
-    async def create_session(self, owner: Connection) -> Session:
+    async def create_session(self, owner: Connection, owner_name: str) -> Session:
         invite_code = ""
         async with self.sessions_lock:
             for _ in range(5):
@@ -83,7 +83,12 @@ class App:
                     "Failed to generate unique invite code for the session."
                 )
 
-            session = Session(self, owner, invite_code)
+            session = Session(
+                app=self,
+                owner=owner,
+                owner_name=owner_name,
+                code=invite_code,
+            )
             self.sessions[invite_code] = session
 
         await owner.send_session_join(session, owner.key)
