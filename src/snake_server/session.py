@@ -60,7 +60,6 @@ class Session:
             *(
                 conn.send_session_join(self, connection.key)
                 for conn in self.connections.values()
-                if conn != connection.key
             )
         )
 
