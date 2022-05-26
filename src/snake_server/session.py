@@ -18,7 +18,7 @@ class Session:
         self.code = code
         self.running = False
         self.connections: dict[str, Connection] = {}
-        self.winner: Connection | None = None
+        self.deaths: list[str] = []
         self.task: asyncio.Task | None = None
 
     async def start(self) -> None:
@@ -64,7 +64,20 @@ class Session:
         )
 
     async def disconnect(self, connection: Connection) -> None:
-        self.connections.pop(connection.key, None)
+        try:
+            player = self.connections.pop(connection.key)
+        except KeyError:
+            if self.running and connection.key in self.deaths:
+                log.warning(
+                    "disconnect() called for connection that is no longer"
+                    " in the session."
+                )
+            else:
+                # tried to disconnect a player that is not part of the session
+                raise
+        else:
+            self.deaths.append(connection.key)
+
         if self.connections:
             if self.owner is connection:
                 self.owner = next(iter(self.connections))
@@ -81,7 +94,7 @@ class Session:
 
         await connection.send_session_leave(self, connection.key)
         if self.running and len(self.connections) == 1:
-            self.winner = self.owner
+            self.deaths.append(self.owner.key)
             await self.owner.send_session_end(self)
             await self.app.remove_session(self)
             log.info("Session with code %r ended.", self.code)

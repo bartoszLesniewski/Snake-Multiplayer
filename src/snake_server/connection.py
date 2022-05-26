@@ -193,7 +193,7 @@ class Connection:
     async def send_session_end(self, session: Session) -> None:
         await self.send_message(
             MsgType.SESSION_END,
-            {"code": session.code, "winner": session.winner and session.winner.key},
+            {"code": session.code, "deaths": session.deaths},
         )
 
     async def send_session_start(self, session: Session) -> None:
