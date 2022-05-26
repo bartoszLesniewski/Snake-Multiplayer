@@ -32,10 +32,10 @@ class Game:
     def menu(self):
         font = pygame_menu.font.FONT_8BIT
         my_theme = Theme(title_font=font, widget_font=font, widget_font_size=50, widget_margin=(0, 30),
-                         title_font_color=(255, 255, 255), widget_font_color=(255, 255, 255),
-                         title_background_color=(0, 100, 0),
-                         selection_color=(255, 255, 255, 0),
-                         focus_background_color=(0, 100, 0),
+                         title_font_color=WHITE, widget_font_color=WHITE,
+                         title_background_color=GREEN,
+                         selection_color=WHITE,
+                         focus_background_color=GREEN,
                          background_color=pygame_menu.baseimage.BaseImage(
                              image_path="img/background.jpg",
                              drawing_mode=pygame_menu.baseimage.IMAGE_MODE_REPEAT_XY
@@ -85,7 +85,7 @@ class Game:
         if result:
             self.screen.blit(self.background, (0, 0))
             font = pygame.font.SysFont("Arial", 120)
-            surface = font.render("GAME OVER", True, (255, 255, 255))
+            surface = font.render("GAME OVER", True, WHITE)
             rect = surface.get_rect(center=(WIDTH/2, HEIGHT/2))
             self.screen.blit(surface, rect)
             pygame.display.update()
