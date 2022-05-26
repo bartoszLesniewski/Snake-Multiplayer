@@ -27,6 +27,23 @@ class Session:
             *(conn.send_session_start(self) for conn in self.connections.values())
         )
         self.task = asyncio.create_task(self.run())
+        self.task.add_done_callback(self._task_error_handler)
+
+    def _task_error_handler(self, task: asyncio.Task) -> None:
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception as exc:
+            log.error(
+                "Unexpected error occurred while running session with code %r.",
+                exc_info=exc,
+            )
+
+            self.running = False
+            for conn in self.connections.values():
+                conn.session = None
+                asyncio.create_task(conn.close())
 
     async def run(self) -> None:
         # TODO: implement game loop along with proper syncing
