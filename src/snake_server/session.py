@@ -98,7 +98,7 @@ class Session:
         self.alive_players[player.key] = player
         await asyncio.gather(
             *(
-                player.conn.send_session_join(self, connection.key)
+                player.conn.send_session_join(self, player)
                 for player in self.alive_players.values()
             )
         )

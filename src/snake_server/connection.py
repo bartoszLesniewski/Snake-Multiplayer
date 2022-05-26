@@ -10,7 +10,7 @@ from .enums import MsgType
 
 if TYPE_CHECKING:
     from .app import App
-    from .session import Session
+    from .session import Session, SessionPlayer
 
 _log = logging.getLogger(__name__)
 
@@ -175,11 +175,17 @@ class Connection:
         await self.session.start()
         self.log.info("Started a session with code %r", self.session.code)
 
-    async def send_session_join(self, session: Session, key: str) -> None:
-        payload = {"code": session.code, "key": key, "owner_key": session.owner.key}
+    async def send_session_join(self, session: Session, player: SessionPlayer) -> None:
+        payload = {
+            "code": session.code,
+            "player": player.to_dict(),
+            "owner_key": session.owner.key,
+        }
         if key == self.key:
             self.log.info("Joined a session with code %r", session.code)
-            payload["players"] = [player.to_dict() for player in session.players.values()]
+            payload["players"] = [
+                player.to_dict() for player in session.players.values()
+            ]
         await self.send_message(
             MsgType.SESSION_JOIN,
             payload,
