@@ -141,7 +141,7 @@ class Connection:
             return
 
         previous_session = self.session
-        if previous_session is session or self.key in session.connections:
+        if previous_session is session or self.key in session.players:
             self.log.warning("Client seems to already be in this session.")
         if previous_session is not None and previous_session is not session:
             await previous_session.disconnect(self)
@@ -151,8 +151,7 @@ class Connection:
 
     async def handle_create_session(self, data: dict[str, Any]) -> None:
         self.session = await self.app.create_session(self)
-        self.log.info("Created a session with code %r", self.session.code)
-        await self.session.connect(self)
+        self.log.info("Created and joined a session with code %r", self.session.code)
 
     async def handle_start_session(self, data: dict[str, Any]) -> None:
         if self.session is None:
@@ -163,7 +162,7 @@ class Connection:
             await self.send_message(MsgType.INVALID_SESSION, {"exists": True})
             return
 
-        if self.session.owner is not self:
+        if self.session.owner.conn is not self:
             await self.send_message(MsgType.NOT_SESSION_OWNER, {})
             return
 
@@ -171,10 +170,10 @@ class Connection:
         self.log.info("Started a session with code %r", self.session.code)
 
     async def send_session_join(self, session: Session, key: str) -> None:
-        payload = {"code": session.code, "key": key, "owner": session.owner.key}
+        payload = {"code": session.code, "key": key, "owner_key": session.owner.key}
         if key == self.key:
             self.log.info("Joined a session with code %r", session.code)
-            payload["connections"] = list(session.connections)
+            payload["players"] = [player.to_dict() for player in session.players.values()]
         await self.send_message(
             MsgType.SESSION_JOIN,
             payload,
@@ -187,13 +186,15 @@ class Connection:
         if not self.writer.is_closing():
             await self.send_message(
                 MsgType.SESSION_LEAVE,
-                {"code": session.code, "key": key, "owner": session.owner.key},
+                {"code": session.code, "key": key, "owner_key": session.owner.key},
             )
 
     async def send_session_end(self, session: Session) -> None:
+        leaderboard = [player.to_dict() for player in session.dead_players]
+        leaderboard.reverse()
         await self.send_message(
             MsgType.SESSION_END,
-            {"code": session.code, "deaths": session.deaths},
+            {"code": session.code, "leaderboard": leaderboard},
         )
 
     async def send_session_start(self, session: Session) -> None:

@@ -86,6 +86,7 @@ class App:
             session = Session(self, owner, invite_code)
             self.sessions[invite_code] = session
 
+        await owner.send_session_join(session, owner.key)
         return session
 
     async def remove_session(self, session: Session) -> None:
