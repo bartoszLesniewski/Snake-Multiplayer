@@ -1,8 +1,14 @@
 from Game import Game
 
 
-game = Game()
-game.menu()
+def main():
+    game = Game()
+    game.menu()
+
+
+if __name__ == "__main__":
+    main()
+
 
 
 
