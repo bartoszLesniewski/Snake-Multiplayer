@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import itertools
 import logging
 import random
-from collections import deque
+from collections import defaultdict, deque
+from collections.abc import Collection, Generator
 from typing import TYPE_CHECKING, Any
 
 from .enums import Direction
@@ -142,7 +144,6 @@ class Session:
         }
 
     async def run(self) -> None:
-        # TODO: implement game loop along with proper syncing
         self.last_tick_time = datetime.datetime.now(datetime.timezone.utc)
         while True:
             self.tick += 1
@@ -150,6 +151,7 @@ class Session:
             if self.update_positions():
                 self.handle_wall_deaths()
                 self.handle_tail_self_cutting()
+                self.handle_collision_deaths()
 
             self.generate_apples()
 
@@ -193,6 +195,136 @@ class Session:
             else:
                 for _ in range(len(player.chunks) - idx):
                     player.chunks.pop()
+
+    def handle_collision_deaths(self) -> None:
+        self.handle_tail_collisions()
+        self.handle_head_overlap_collisions()
+        self.handle_head_on_collisions()
+
+    def handle_tail_collisions(self) -> None:
+        """
+        Handle 'tail collisions'.
+
+        Collision description:
+            Player 1's head overlaps player 2's tail or they both overlap
+            each other's tails.
+
+        Examples:
+            1. Player 1's head overlaps player 2's tail.
+                - Before collision:
+                    --->
+                      ^
+                      |
+
+                - After collision:
+                     -^->
+                      |
+
+            2. Player 1's head overlaps player 2's tail
+               *and* player 2's head overlaps player 1's tail.
+                - Before collision:
+                      |
+                      |
+                    +>|
+                    |<+
+                    |
+                    |
+
+                - After collision 2:
+                      |
+                    +->
+                    <-+
+                    |
+
+        Condition:
+            p1.head in p2.tail AND (p1, p2) are not head overlap or head-on colliding
+
+        Result:
+            Death of the player whose head is in other player's tail.
+            If both of the heads are in each other's tails, choose randomly.
+        """
+        deaths: set[str] = set()
+        for p1, p2 in itertools.combinations(self.alive_players.values(), 2):
+            if p1.key in deaths or p2.key in deaths:
+                continue
+            if (
+                # head overlap collision
+                p1.head != p2.head
+                # head-on collision
+                and (p1.chunks[0] != p2.chunks[1] and p2.chunks[0] != p1.chunks[1])
+            ):
+                potential_losers = []
+                if p1.head in p2.chunks:
+                    potential_losers.append(p1)
+                if p2.head in p1.chunks:
+                    potential_losers.append(p2)
+                deaths.update(choose_losers(potential_losers))
+
+        for key in deaths:
+            self.dead_players[loser.key] = self.alive_players.pop(loser.key)
+
+    def handle_head_overlap_collisions(self) -> None:
+        """
+        Handle 'head overlap collisions'.
+
+        Collision description:
+            Heads overlap.
+
+        Example:
+            - Before collision:
+                ---> <---
+
+            - After collision:
+                 ---X---
+
+        Condition:
+            p1.head == p2.head
+
+        Result:
+            Death of the shorter player. For players of same length, choose randomly.
+        """
+        overlapping_heads: defaultdict[
+            tuple[int, int], list[SessionPlayer]
+        ] = defaultdict(list)
+        for player in self.alive_players.values():
+            overlapping_heads[player.head].append(player)
+
+        for players in overlapping_heads.values():
+            if len(players) > 1:
+                for key in choose_losers(players):
+                    self.dead_players[key] = self.alive_players.pop(key)
+
+    def handle_head_on_collisions(self) -> None:
+        """
+        Handle 'head-on collisions'.
+
+        Collision description:
+            Heads overlap with the first tail element of their opponent.
+            This can only happen when two players drove at each other
+            from opposite directions.
+
+        Example:
+            - Before collision:
+                ---><---
+
+            - After collision:
+                ---<>---
+
+        Condition:
+            p1.head == p2.chunks[1] AND p2.head == p1.chunks[1]
+
+        Result:
+            Death of the shorter player. For players of same length, choose randomly.
+        """
+        deaths: set[str] = set()
+        for p1, p2 in itertools.combinations(self.alive_players.values(), 2):
+            if p1.key in deaths or p2.key in deaths:
+                continue
+            if p1.chunks[0] == p2.chunks[1] and p2.chunks[0] == p1.chunks[1]:
+                deaths.update(choose_losers((p1, p2)))
+
+        for key in deaths:
+            self.dead_players[key] = self.alive_players.pop(key)
 
     def generate_apples(self) -> None:
         # for now, there can only be one apple in the game
@@ -267,3 +399,14 @@ class Session:
             await self.owner.send_session_end(self)
             await self.app.remove_session(self)
             log.info("Session with code %r ended.", self.code)
+
+
+def choose_losers(players: Collection[SessionPlayer]) -> Generator[str, None, None]:
+    if not players:
+        return
+
+    m = max(players, key=lambda p: len(p.chunks))
+    winner = random.choice([p for p in players if len(p.chunks) == m])
+    for player in players:
+        if player != winner:
+            yield player.key
