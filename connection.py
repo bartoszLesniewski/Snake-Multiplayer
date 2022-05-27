@@ -23,4 +23,10 @@ class Connection:
         ...
 
 
+#    def send_message(self, msg_type, data)
+#        serialized = json.dumps(
+#            {"type": msg_type.value, "data": data}, separators=(",", ":")
+#        )
+#        self.writer.write(f"{serialized}\n".encode())
+#        await self.writer.drain()
 

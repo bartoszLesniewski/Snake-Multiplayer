@@ -3,9 +3,9 @@ import pygame
 import pygame_menu
 from pygame_menu import Theme
 
-from Apple import Apple
-from Player import Player
-from Snake import Snake
+from apple import Apple
+from player import Player
+from snake import Snake
 from constans import *
 
 

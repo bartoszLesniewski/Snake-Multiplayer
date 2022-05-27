@@ -1,7 +1,7 @@
 import pygame
 
-from Direction import Direction
-from Segment import Segment
+from direction import Direction
+from segment import Segment
 from constans import *
 
 

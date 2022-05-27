@@ -1,5 +1,5 @@
-from Connection import Connection
-from Snake import Snake
+from connection import Connection
+from snake import Snake
 from constans import *
 
 
