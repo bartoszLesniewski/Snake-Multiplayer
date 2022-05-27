@@ -125,6 +125,7 @@ class Session:
             for player in self.players.values():
                 player.conn.session = None
                 asyncio.create_task(player.conn.close())
+            asyncio.create_task(self.app.remove_session(self))
 
     def get_next_sleep_time(self) -> float:
         self.last_tick_time += self.app.tick_interval
@@ -391,14 +392,12 @@ class Session:
         else:
             self.stop()
             await self.app.remove_session(self)
-            log.info("Session with code %r ended.", self.code)
 
         await connection.send_session_leave(self, connection.key)
         if self.running and len(self.alive_players) == 1:
             self.dead_players.append(self.owner)
             await self.owner.send_session_end(self)
             await self.app.remove_session(self)
-            log.info("Session with code %r ended.", self.code)
 
 
 def choose_losers(players: Collection[SessionPlayer]) -> Generator[str, None, None]:

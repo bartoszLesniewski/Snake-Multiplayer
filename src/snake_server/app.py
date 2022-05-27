@@ -103,3 +103,4 @@ class App:
     async def remove_session(self, session: Session) -> None:
         async with self.sessions_lock:
             self.sessions.pop(session.code, None)
+            log.info("Session with code %r ended.", session.code)
