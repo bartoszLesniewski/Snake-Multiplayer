@@ -148,7 +148,7 @@ class Session:
             self.tick += 1
 
             if self.update_positions():
-                ...
+                self.handle_wall_deaths()
 
             self.generate_apples()
 
@@ -172,6 +172,15 @@ class Session:
             player.move()
 
         return True
+
+    def handle_wall_deaths(self) -> None:
+        to_remove: list[str] = []
+        for player in self.alive_players.values():
+            x, y = player.head
+            if x < 0 or x >= self.app.grid_width or y < 0 or y >= self.app.grid_height:
+                to_remove.append(player.key)
+        for key in to_remove:
+            self.dead_players[key] = self.alive_players.pop(key)
 
     def generate_apples(self) -> None:
         # for now, there can only be one apple in the game
