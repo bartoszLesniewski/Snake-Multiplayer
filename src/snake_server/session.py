@@ -127,6 +127,8 @@ class Session:
             await asyncio.sleep(self.get_next_sleep_time())
 
     async def connect(self, connection: Connection, name: str) -> None:
+        if self.running:
+            raise RuntimeError("Can't connect while the game is running.")
         player = SessionPlayer(connection, name)
         self.players[player.key] = player
         self.alive_players[player.key] = player
