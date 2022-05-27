@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import logging
 import os
 import sys
@@ -16,6 +17,11 @@ class App:
     def __init__(self) -> None:
         self.host = "127.0.0.1"
         self.port = 8888
+        self.tick_interval = datetime.timedelta(milliseconds=50)
+        #: players move once every `game_speed` ticks
+        self.game_speed = 5
+        self.grid_width = 40
+        self.grid_height = 30
         self.sessions: dict[str, Session] = {}
         self.sessions_lock = asyncio.Lock()
         self.connections: dict[str, Connection] = {}

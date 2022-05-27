@@ -23,3 +23,5 @@ class MsgType(enum.Enum):
     SESSION_START = "session_start"
     #: Session ended. Either someone won or all other players left the session.
     SESSION_END = "session_end"
+    #: A message with current state of session's world. This is sent at tick rate.
+    SESSION_STATE_UPDATE = "session_state_update"

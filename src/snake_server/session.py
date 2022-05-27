@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import logging
 from collections import deque
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .app import App
@@ -52,6 +53,9 @@ class Session:
 
         self.running = False
         self.task: asyncio.Task | None = None
+        self.tick = 0
+        #: this might be a time in the past or future
+        self.last_tick_time = datetime.datetime.min
 
     def is_name_taken(self, name: str) -> bool:
         return any(player.name == name for player in self.players.values())
@@ -66,6 +70,11 @@ class Session:
         )
         self.task = asyncio.create_task(self.run())
         self.task.add_done_callback(self._task_error_handler)
+
+    def stop(self) -> None:
+        if self.task is not None:
+            self.task.cancel()
+        self.running = False
 
     def _task_error_handler(self, task: asyncio.Task) -> None:
         try:
@@ -83,14 +92,39 @@ class Session:
                 player.conn.session = None
                 asyncio.create_task(player.conn.close())
 
+    def get_next_sleep_time(self) -> float:
+        self.last_tick_time += self.app.tick_interval
+        sleep_delta = self.last_tick_time - datetime.datetime.now(datetime.timezone.utc)
+        ret = sleep_delta.total_seconds()
+        if ret < 0:
+            log.warning("Session %r is behind!", self.code)
+        return ret
+
+    def get_state(self) -> dict[str, Any]:
+        return {
+            "tick": self.tick,
+            "alive_players": [
+                player.to_dict() for player in self.alive_players.values()
+            ],
+        }
+
     async def run(self) -> None:
         # TODO: implement game loop along with proper syncing
-        ...
+        self.last_tick_time = datetime.datetime.now(datetime.timezone.utc)
+        while True:
+            self.tick += 1
 
-    def stop(self) -> None:
-        if self.task is not None:
-            self.task.cancel()
-        self.running = False
+            # broadcast the state update to all connections
+            state = self.get_state()
+            await asyncio.gather(
+                *(
+                    player.conn.send_session_state_update(self, state)
+                    for player in self.players.values()
+                )
+            )
+
+            # sleep until next tick
+            await asyncio.sleep(self.get_next_sleep_time())
 
     async def connect(self, connection: Connection, name: str) -> None:
         player = SessionPlayer(connection, name)
