@@ -7,6 +7,8 @@ import random
 from collections import deque
 from typing import TYPE_CHECKING, Any
 
+from .enums import Direction
+
 if TYPE_CHECKING:
     from .app import App
     from .connection import Connection
@@ -20,10 +22,26 @@ class SessionPlayer:
         self.name = name
         self.alive = True
         self.chunks: deque[tuple[int, int]] = deque()
+        self.direction = Direction.RIGHT
+
+    @property
+    def head(self) -> tuple[int, int]:
+        return self.chunks[0]
+
+    @property
+    def tail(self) -> list[tuple[int, int]]:
+        if not self.chunks:
+            return []
+        head, *tail = self.chunks
+        return tail
 
     @property
     def key(self) -> str:
         return self.conn.key
+
+    @property
+    def session(self) -> str:
+        return self.conn.session
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -34,6 +52,18 @@ class SessionPlayer:
 
     def __eq__(self, other: SessionPlayer) -> bool:
         return self.conn is other.conn
+
+    def move(self) -> None:
+        head_x, head_y = self.head
+        offset_x, offset_y = self.direction.offset
+        self.chunks.appendleft((head_x + offset_x, head_y + offset_y))
+
+        for idx, apple_coords in enumerate(self.session.apples):
+            if apple_coords == self.head:
+                self.session.apples.pop(idx)
+                break
+        else:
+            self.chunks.pop()
 
 
 class Session:
@@ -117,6 +147,9 @@ class Session:
         while True:
             self.tick += 1
 
+            if self.update_positions():
+                ...
+
             self.generate_apples()
 
             # broadcast the state update to all connections
@@ -130,6 +163,15 @@ class Session:
 
             # sleep until next tick
             await asyncio.sleep(self.get_next_sleep_time())
+
+    def update_positions(self) -> bool:
+        if self.tick % self.app.game_speed:
+            return False
+
+        for player in self.alive_players.values():
+            player.move()
+
+        return True
 
     def generate_apples(self) -> None:
         # for now, there can only be one apple in the game

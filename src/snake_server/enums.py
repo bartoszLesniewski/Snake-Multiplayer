@@ -25,3 +25,34 @@ class MsgType(enum.Enum):
     SESSION_END = "session_end"
     #: A message with current state of session's world. This is sent at tick rate.
     SESSION_STATE_UPDATE = "session_state_update"
+
+
+class Direction(enum.Enum):
+    UP = 1
+    DOWN = 2
+    RIGHT = 3
+    LEFT = 4
+
+    @property
+    def offset(self) -> tuple[int, int]:
+        match self:
+            case self.UP:
+                return (0, -1)
+            case self.DOWN:
+                return (0, 1)
+            case self.RIGHT:
+                return (1, 0)
+            case self.LEFT:
+                return (-1, 0)
+
+    @property
+    def opposite(self) -> Direction:
+        match self:
+            case self.UP:
+                return self.DOWN
+            case self.DOWN:
+                return self.UP
+            case self.RIGHT:
+                return self.LEFT
+            case self.LEFT:
+                return self.RIGHT
