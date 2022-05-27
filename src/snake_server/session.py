@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import logging
+import random
 from collections import deque
 from typing import TYPE_CHECKING, Any
 
@@ -50,6 +51,7 @@ class Session:
         self.alive_players: dict[str, SessionPlayer] = self.players.copy()
         #: list of deaths ordered by death time (most recent death is the last entry)
         self.dead_players: list[SessionPlayer] = []
+        self.apples: set[tuple[int, int]] = set()
 
         self.running = False
         self.task: asyncio.Task | None = None
@@ -103,6 +105,7 @@ class Session:
     def get_state(self) -> dict[str, Any]:
         return {
             "tick": self.tick,
+            "apples": [list(apple_pos) for apple_pos in self.apples],
             "alive_players": [
                 player.to_dict() for player in self.alive_players.values()
             ],
@@ -113,6 +116,8 @@ class Session:
         self.last_tick_time = datetime.datetime.now(datetime.timezone.utc)
         while True:
             self.tick += 1
+
+            self.generate_apples()
 
             # broadcast the state update to all connections
             state = self.get_state()
@@ -125,6 +130,27 @@ class Session:
 
             # sleep until next tick
             await asyncio.sleep(self.get_next_sleep_time())
+
+    def generate_apples(self) -> None:
+        # for now, there can only be one apple in the game
+        if self.apples:
+            return
+
+        taken_positions = set()
+        for player in self.alive_players.values():
+            taken_positions.update(player.chunks)
+        for apple_pos in self.apples:
+            taken_positions.add(apple_pos)
+
+        while True:
+            apple_pos = (
+                random.randrange(self.app.grid_width),
+                random.randrange(self.app.grid_height),
+            )
+            if apple_pos not in taken_positions:
+                break
+
+        self.apples.append(apple_pos)
 
     async def connect(self, connection: Connection, name: str) -> None:
         if self.running:
