@@ -149,6 +149,7 @@ class Session:
 
             if self.update_positions():
                 self.handle_wall_deaths()
+                self.handle_tail_self_cutting()
 
             self.generate_apples()
 
@@ -181,6 +182,17 @@ class Session:
                 to_remove.append(player.key)
         for key in to_remove:
             self.dead_players[key] = self.alive_players.pop(key)
+
+    def handle_tail_self_cutting(self) -> None:
+        """Handle a collision with your own tail by cutting it in that spot."""
+        for player in self.alive_players.values():
+            try:
+                idx = player.chunks.index(player.head, 1)
+            except ValueError:
+                pass
+            else:
+                for _ in range(len(player.chunks) - idx):
+                    player.chunks.pop()
 
     def generate_apples(self) -> None:
         # for now, there can only be one apple in the game
