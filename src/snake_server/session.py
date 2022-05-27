@@ -60,9 +60,9 @@ class SessionPlayer:
         offset_x, offset_y = self.direction.offset
         self.chunks.appendleft((head_x + offset_x, head_y + offset_y))
 
-        for idx, apple_coords in enumerate(self.session.apples):
-            if apple_coords == self.head:
-                self.session.apples.pop(idx)
+        for apple_pos in self.session.apples:
+            if apple_pos == self.head:
+                self.session.apples.remove(apple_pos)
                 break
         else:
             self.chunks.pop()
@@ -335,8 +335,7 @@ class Session:
         taken_positions = set()
         for player in self.alive_players.values():
             taken_positions.update(player.chunks)
-        for apple_pos in self.apples:
-            taken_positions.add(apple_pos)
+        taken_positions.update(self.apples)
 
         while True:
             apple_pos = (
@@ -346,7 +345,7 @@ class Session:
             if apple_pos not in taken_positions:
                 break
 
-        self.apples.append(apple_pos)
+        self.apples.add(apple_pos)
 
     async def connect(self, connection: Connection, name: str) -> None:
         if self.running:
