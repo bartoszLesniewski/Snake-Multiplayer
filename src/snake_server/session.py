@@ -19,11 +19,9 @@ log = logging.getLogger(__name__)
 
 
 class SessionPlayer:
-    def __init__(self, conn: Connection, name: str) -> None:
+    def __init__(self, session: Session, conn: Connection, name: str) -> None:
         self.conn = conn
-        if self.conn.session is None:
-            raise RuntimeError("conn.session cannot be None.")
-        self.session = self.conn.session
+        self.session = session
         self.name = name
         self.chunks: deque[tuple[int, int]] = deque()
         self.direction = Direction.UP
@@ -74,7 +72,7 @@ class Session:
         self, *, app: App, owner: Connection, owner_name: str, code: str
     ) -> None:
         self.app = app
-        self.owner = SessionPlayer(owner, owner_name)
+        self.owner = SessionPlayer(self, owner, owner_name)
         self.code = code
 
         #: stores all players that were ever in the running session,
@@ -402,7 +400,7 @@ class Session:
     async def connect(self, connection: Connection, name: str) -> None:
         if self.running:
             raise RuntimeError("Can't connect while the game is running.")
-        player = SessionPlayer(connection, name)
+        player = SessionPlayer(self, connection, name)
         self.players[player.key] = player
         self.alive_players[player.key] = player
         await asyncio.gather(
