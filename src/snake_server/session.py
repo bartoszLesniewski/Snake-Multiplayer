@@ -49,6 +49,7 @@ class SessionPlayer:
             "key": self.key,
             "name": self.name,
             "chunks": [list(chunk) for chunk in self.chunks],
+            "direction": self.direction.value,
         }
 
     def __eq__(self, other: SessionPlayer) -> bool:
