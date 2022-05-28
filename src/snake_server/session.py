@@ -100,7 +100,7 @@ class Session:
         await asyncio.gather(
             *(
                 player.conn.send_session_start(self)
-                for player in self.alive_players.values()
+                for player in self.players.values()
             )
         )
         self.task = asyncio.create_task(self.run())
@@ -110,6 +110,9 @@ class Session:
         if self.task is not None:
             self.task.cancel()
         self.running = False
+        for player in self.players.values():
+            if player.conn.session is self:
+                player.conn.session = None
 
     def _task_error_handler(self, task: asyncio.Task) -> None:
         try:
@@ -124,7 +127,8 @@ class Session:
 
             self.running = False
             for player in self.players.values():
-                player.conn.session = None
+                if player.conn.session is self:
+                    player.conn.session = None
                 asyncio.create_task(player.conn.close())
             asyncio.create_task(self.app.remove_session(self))
 
@@ -159,7 +163,7 @@ class Session:
 
     async def run(self) -> None:
         self.last_tick_time = datetime.datetime.now(datetime.timezone.utc)
-        while True:
+        while len(self.alive_players) > 1:
             self.tick += 1
 
             if self.update_positions():
@@ -180,6 +184,15 @@ class Session:
 
             # sleep until next tick
             await asyncio.sleep(self.get_next_sleep_time())
+
+        await self.finish_game()
+
+    async def finish_game(self) -> None:
+        await asyncio.gather(
+            *(player.conn.send_session_end(self) for player in self.players.values())
+        )
+
+        await self.app.remove_session(self)
 
     def update_positions(self) -> bool:
         if self.tick % self.app.game_speed:
@@ -369,47 +382,67 @@ class Session:
         await asyncio.gather(
             *(
                 player.conn.send_session_join(self, player)
-                for player in self.alive_players.values()
+                for player in self.players.values()
             )
         )
 
     async def disconnect(self, connection: Connection) -> None:
-        if not self.running:
-            del self.players[connection.key]
+        if self.running:
+            await self._disconnect_from_running()
+        else:
+            await self._disconnect_from_not_running()
 
+    async def _disconnect_from_running(self, connection: Connection) -> None:
         try:
             player = self.alive_players.pop(connection.key)
         except KeyError:
-            if self.running and connection.key in self.players:
+            if connection.key in self.players:
                 log.warning(
-                    "disconnect() called for connection that is no longer"
-                    " in the session."
+                    "disconnect() called for connection (%s) that is no longer"
+                    " in the session.",
+                    connection.key,
                 )
+                return
             else:
                 # tried to disconnect a player that is not part of the session
                 raise
-        else:
-            player.alive = False
-            self.dead_players.append(player)
 
-        if self.alive_players:
-            if self.owner == player:
-                self.owner = next(iter(self.alive_players.values()))
-            await asyncio.gather(
-                *(
-                    player.conn.send_session_leave(self, connection.key)
-                    for player in self.alive_players.values()
-                )
+        self.dead_players.append(player)
+
+        if self.alive_players and self.owner == player:
+            self.owner = next(iter(self.alive_players.values()))
+
+        await asyncio.gather(
+            *(
+                player.conn.send_session_leave(self, connection.key)
+                for player in self.players.values()
             )
-        else:
-            self.stop()
-            await self.app.remove_session(self)
+        )
 
-        await connection.send_session_leave(self, connection.key)
-        if self.running and len(self.alive_players) == 1:
-            self.dead_players.append(self.owner)
-            await self.owner.send_session_end(self)
+        if len(self.alive_players) <= 1:
+            # make sure we don't give back control to the caller
+            # before we send session_end message
+            await self.task
+
+    async def _disconnect_from_not_running(self, connection: Connection) -> None:
+        del self.players[connection.key]
+        player = self.alive_players.pop(connection.key)
+
+        if not self.players:
             await self.app.remove_session(self)
+        elif self.owner == player:
+            self.owner = next(iter(self.players.values()))
+
+        await asyncio.gather(
+            *(
+                player.conn.send_session_leave(self, connection.key)
+                for player in self.players.values()
+            )
+        )
+
+        # we deleted connection from self.players above already
+        # so we need to make sure the message is sent to it as well
+        await connection.send_session_leave(self, connection.key)
 
 
 def choose_losers(players: Collection[SessionPlayer]) -> Generator[str, None, None]:

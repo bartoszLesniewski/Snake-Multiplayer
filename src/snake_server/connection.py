@@ -234,12 +234,15 @@ class Connection:
             )
 
     async def send_session_end(self, session: Session) -> None:
+        self.session = None
         leaderboard = [player.to_dict() for player in session.dead_players]
         leaderboard.reverse()
-        await self.send_message(
-            MsgType.SESSION_END,
-            {"code": session.code, "leaderboard": leaderboard},
-        )
+        if not self.writer.is_closing():
+            await self.send_message(
+                MsgType.SESSION_END,
+                {"code": session.code, "leaderboard": leaderboard},
+            )
+            await self.close()
 
     async def send_session_start(self, session: Session) -> None:
         await self.send_message(
