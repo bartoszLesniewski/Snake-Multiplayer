@@ -413,9 +413,9 @@ class Session:
 
     async def disconnect(self, connection: Connection) -> None:
         if self.running:
-            await self._disconnect_from_running()
+            await self._disconnect_from_running(connection)
         else:
-            await self._disconnect_from_not_running()
+            await self._disconnect_from_not_running(connection)
 
     async def _disconnect_from_running(self, connection: Connection) -> None:
         try:
