@@ -61,8 +61,10 @@ class Connection:
                 return Message.SESSION_LEAVE, msg["data"]
             elif msg["type"] == Message.SESSION_START.value:
                 return Message.SESSION_START, None
+            elif msg["type"] == Message.SESSION_STATE_UPDATE.value:
+                return Message.SESSION_STATE_UPDATE, msg["data"]
             else:
-                return msg
+                return None, None
         else:
             # print("No message")
             return None

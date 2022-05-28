@@ -4,11 +4,11 @@ from constans import *
 
 
 class Apple(pygame.sprite.Sprite):
-    def __init__(self):
+    def __init__(self, position):
         super().__init__()
-        x_position, y_position = self.rand_position()
+        # x_position, y_position = self.rand_position()
         self.surface = pygame.Surface((20, 20), pygame.SRCALPHA)
-        self.rect = self.surface.get_rect(x=x_position, y=y_position)
+        self.rect = self.surface.get_rect(x=position[0] * SEGMENT_SIZE, y=position[1] * SEGMENT_SIZE)
         self.surface.blit(pygame.image.load("img/beer.png"), (0, 0))
 
     @staticmethod

@@ -21,7 +21,7 @@ class Game:
         self.connection = Connection()
         self.host = None
         self.opponents = []
-        self.apple = Apple()
+        self.apple = None
         self.fps = pygame.time.Clock()
 
     def menu(self):
@@ -149,17 +149,22 @@ class Game:
         self.play()
 
     def play(self):
-        while True:
-            result = self.connection.check_for_message()
-            #print(result)
+        result = self.connection.check_for_message()
+        if result is not None and result[0] == Message.SESSION_STATE_UPDATE:
+            self.update_game_state(result[1])
+            while True:
+                # result = self.connection.check_for_message()
+                # print(result)
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
 
-            if not self.check_game_over():
+                # if not self.check_game_over():
                 self.update_screen()
+        else:
+            self.play()
 
     def update_screen(self):
         # self.screen.fill((0, 0, 0))
@@ -167,16 +172,41 @@ class Game:
         # screen.blit(snake.surface, snake.rect)
 
         self.player.snake.draw(self.screen)
+
+        for opponent in self.opponents:
+            opponent.snake.draw(self.screen)
+
         self.apple.draw(self.screen)
 
-        self.player.snake.change_direction(pygame.key.get_pressed())
+        # self.player.snake.change_direction(pygame.key.get_pressed())
 
-        self.player.snake.move(self.check_collision())
+        # self.player.snake.move(self.check_collision())
 
         # print(self.snake.head.rect.x, self.snake.head.rect.y)
         # print("Apple position: " + str(self.apple.rect.x) + " " + str(self.apple.rect.y))
         pygame.display.update()
         self.fps.tick(FPS)
+
+    def update_game_state(self, data):
+        self.apple = Apple(data["apples"][0])
+        alive_players = data["alive_players"]
+        is_player_alive = False
+
+        for alive_player in alive_players:
+            if alive_player["key"] == self.player.key:
+                is_player_alive = True
+                self.player.snake.update_segments(alive_player["chunks"])
+
+        if not is_player_alive:
+            self.show_game_over_screen()
+
+        else:
+            alive_opponents = []
+            for alive_player in alive_players:
+                alive_opponents.append(Player(alive_player["name"], alive_player["key"]))
+                alive_opponents[-1].snake.update_segments(alive_player["chunks"])
+
+            self.opponents = alive_opponents
 
     def check_collision(self):
         if self.player.snake.head.rect.colliderect(self.apple.rect):
@@ -203,11 +233,15 @@ class Game:
         #       break
 
         if result:
-            self.screen.blit(self.background, (0, 0))
-            font = pygame.font.SysFont("Arial", 120)
-            surface = font.render("GAME OVER", True, WHITE)
-            rect = surface.get_rect(center=(WIDTH/2, HEIGHT/2))
-            self.screen.blit(surface, rect)
-            pygame.display.update()
+            self.show_game_over_screen()
 
         return result
+
+    def show_game_over_screen(self):
+        self.screen.blit(self.background, (0, 0))
+        font = pygame.font.SysFont("Arial", 120)
+        surface = font.render("GAME OVER", True, WHITE)
+        rect = surface.get_rect(center=(WIDTH / 2, HEIGHT / 2))
+        self.screen.blit(surface, rect)
+        pygame.display.update()
+
