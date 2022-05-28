@@ -99,10 +99,7 @@ class Session:
         self.running = True
         self.generate_player_chunks()
         await asyncio.gather(
-            *(
-                player.conn.send_session_start(self)
-                for player in self.players.values()
-            )
+            *(player.conn.send_session_start(self) for player in self.players.values())
         )
         self.task = asyncio.create_task(self.run())
         self.task.add_done_callback(self._task_error_handler)
