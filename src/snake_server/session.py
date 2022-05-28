@@ -24,7 +24,7 @@ class SessionPlayer:
         self.name = name
         self.alive = True
         self.chunks: deque[tuple[int, int]] = deque()
-        self.direction = Direction.RIGHT
+        self.direction = Direction.UP
 
     @property
     def head(self) -> tuple[int, int]:
@@ -96,6 +96,7 @@ class Session:
 
     async def start(self) -> None:
         self.running = True
+        self.generate_player_chunks()
         await asyncio.gather(
             *(
                 player.conn.send_session_start(self)
@@ -126,6 +127,18 @@ class Session:
                 player.conn.session = None
                 asyncio.create_task(player.conn.close())
             asyncio.create_task(self.app.remove_session(self))
+
+    def generate_player_chunks(self) -> None:
+        distance = self.app.grid_width / (len(self.alive_players) + 1)
+        y_center = self.app.grid_height // 2
+        chunk_amount = self.app.initial_chunk_amount
+        y_start = y_center - (chunk_amount // 2)
+        y_stop = y_center + (chunk_amount // 2) + (chunk_amount % 2)
+
+        for idx, player in enumerate(self.alive_players.values(), start=1):
+            x = int(distance * idx)
+            for y in range(y_start, y_stop):
+                player.chunks.append((x, y))
 
     def get_next_sleep_time(self) -> float:
         self.last_tick_time += self.app.tick_interval

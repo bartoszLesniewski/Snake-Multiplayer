@@ -22,6 +22,7 @@ class App:
         self.game_speed = 5
         self.grid_width = 40
         self.grid_height = 30
+        self.initial_chunk_amount = 4
         self.sessions: dict[str, Session] = {}
         self.sessions_lock = asyncio.Lock()
         self.connections: dict[str, Connection] = {}
