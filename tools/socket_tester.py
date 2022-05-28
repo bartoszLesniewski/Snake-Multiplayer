@@ -14,7 +14,7 @@ class App:
     def __init__(self) -> None:
         self.lock = threading.Lock()
         self.sock = socket.socket()
-        self.input_thread = None
+        self.input_thread: threading.Thread | None = None
 
     def run(self) -> None:
         sock = self.sock
