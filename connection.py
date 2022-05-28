@@ -27,8 +27,8 @@ class Connection:
         self.send_message(Message.CREATE_SESSION, data)
         msg = self.receive_message()
         self.session_code = msg["data"]["code"]
-        #self.send_message(Message.START_SESSION, data)
-        #self.receive_message()
+        # self.send_message(Message.START_SESSION, data)
+        # self.receive_message()
 
     def send_message(self, msg_type, data):
         msg = json.dumps(
@@ -45,17 +45,20 @@ class Connection:
 
         return msg
 
-    def check_for_join(self):
+    def check_for_message(self):
         response, _, _ = select.select([self.socket], [], [], 0.0001)
         if response:
             line = self.reader.readline().decode()
+            print(line)
             msg = json.loads(line)
-            print(msg)
-            if msg["type"] == "session_join":
+            # print(msg)
+            if msg["type"] == Message.SESSION_JOIN.value:
                 players = msg["data"]["players"]
-                return "JOIN", players
-            else:
-                return "LEAVE", msg["data"]["key"]
+                return Message.SESSION_JOIN, players
+            elif msg["type"] == Message.SESSION_LEAVE.value:
+                return Message.SESSION_LEAVE, msg["data"]
+            elif msg["type"] == Message.SESSION_START.value:
+                return Message.SESSION_START, None
         else:
             # print("No message")
             return None
@@ -65,3 +68,12 @@ class Connection:
         self.send_message(Message.JOIN_SESSION, data)
         msg = self.receive_message()
         self.session_code = msg["data"]["code"]
+
+        return msg["data"]
+
+    def start_session(self, player_name, code):
+        data = {"code": code, "player_name": player_name}
+        self.send_message(Message.START_SESSION, data)
+        msg = self.receive_message()
+
+

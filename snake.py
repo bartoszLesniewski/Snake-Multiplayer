@@ -13,7 +13,7 @@ class Snake (pygame.sprite.Sprite):
         self.segments = []
         self.segments.append(self.head)
         self.direction = Direction.UP
-        self.test_segments()
+        # self.test_segments()
 
     def test_segments(self):
         self.segments.append(Segment(400, 320))

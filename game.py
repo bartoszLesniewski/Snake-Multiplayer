@@ -3,9 +3,10 @@ import pygame
 import pygame_menu
 from pygame_menu import Theme
 
+import player
 from apple import Apple
+from messages import Message
 from player import Player
-from snake import Snake
 from constans import *
 
 
@@ -17,20 +18,17 @@ class Game:
         self.background = pygame.image.load("img/background.jpg")
 
         self.player = None
+        self.host = None
         self.opponents = []
         self.apple = Apple()
         self.fps = pygame.time.Clock()
 
-    def play(self):
-        #self.players.append(Player())
-        while True:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-
-            if not self.check_game_over():
-                self.update_screen()
+    def menu(self):
+        menu = self.set_menu_parameters(60, "Main menu")
+        menu.add.button("New game", self.menu_with_input, "NEW_GAME",  background_color=GREEN)
+        menu.add.button("Join game", self.menu_with_input, "JOIN_GAME", background_color=GREEN)
+        menu.add.button("Exit", pygame_menu.events.EXIT, background_color=GREEN)
+        menu.mainloop(self.screen)
 
     @staticmethod
     def set_menu_parameters(font_size, title):
@@ -48,13 +46,6 @@ class Game:
 
         return menu
 
-    def menu(self):
-        menu = self.set_menu_parameters(60, "Main menu")
-        menu.add.button("New game", self.menu_with_input, "NEW_GAME",  background_color=GREEN)
-        menu.add.button("Join game", self.menu_with_input, "JOIN_GAME", background_color=GREEN)
-        menu.add.button("Exit", pygame_menu.events.EXIT, background_color=GREEN)
-        menu.mainloop(self.screen)
-
     def menu_with_input(self, choice):
         self.update_menu()
 
@@ -65,10 +56,14 @@ class Game:
 
         if choice == "JOIN_GAME":
             menu.add.label("Enter the code: ")
-            code = menu.add.text_input("", default="code here", maxchar=10)
+            code = menu.add.text_input("", default="code...", maxchar=10)
 
         menu.add.button("Confirm", self.lobby, player_input, choice, code, background_color=GREEN)
         menu.mainloop(self.screen)
+
+    def update_menu(self):
+        self.screen.blit(self.background, (0, 0))
+        pygame.display.update()
 
     def lobby(self, player_input, choice, code):
         self.player = Player(player_input.get_value())
@@ -76,33 +71,41 @@ class Game:
 
         if choice == "NEW_GAME":
             self.player.connection.create_session(self.player.name)
+            self.host = self.player
         elif choice == "JOIN_GAME":
-            self.player.connection.join_session(self.player.name, code)
+            msg_data = self.player.connection.join_session(self.player.name, code.get_value())
+            self.add_opponents(msg_data["players"])
+            self.find_host(msg_data["owner_key"])
 
         while True:
-            # print("Tu")
-            result = self.player.connection.check_for_join()
+            result = self.player.connection.check_for_message()
             if result is not None:
-                if result[0] == "JOIN":
+                if result[0] == Message.SESSION_JOIN:
                     self.add_opponents(result[1])
-                elif result[0] == "LEAVE":
-                    self.remove_opponent(result[1])
+                elif result[0] == Message.SESSION_LEAVE:
+                    self.remove_opponent(result[1]["key"])
+                    self.find_host(result[1]["owner_key"])
+                elif result[0] == Message.SESSION_START:
+                    self.play()
 
-            self.update_lobby(choice)
+            self.update_lobby()
 
-    def update_lobby(self, choice):
+    def update_lobby(self):
         self.screen.blit(self.background, (0, 0))
         menu = self.set_menu_parameters(30, "Lobby")
         menu.add.label("Waiting players:")
-        menu.add.label("- " + str(self.player.name) + " (host)")
+        info = " (you)"
+        info += " (host)" if self.player == self.host else ""
+        menu.add.label("- " + self.player.name + info)
 
-        for player in self.opponents:
-            menu.add.label("- " + player.name)
+        for opponent in self.opponents:
+            info = " (host)" if opponent == self.host else ""
+            menu.add.label("- " + opponent.name + info)
 
-        if choice == "NEW_GAME":
+        if self.player == self.host:
             menu.add.label("Your lobby code: " + self.player.connection.session_code)
             menu.add.label("Pass it to your friends so they can join the game!")
-            menu.add.button("Start game", self.play, background_color=GREEN)
+            menu.add.button("Start game", self.start, background_color=GREEN)
 
         else:
             menu.add.label("Wait for the host to start a game...")
@@ -120,20 +123,39 @@ class Game:
 
     def add_opponents(self, players):
         print(str(players))
-        for player in players:
-            if player["name"] != self.player.name:
-                self.opponents.append(Player(player["name"], player["key"]))
-            print(str(player["name"]) + " " + str(player["key"]))
+        for opponent in players:
+            if opponent["name"] != self.player.name:
+                self.opponents.append(Player(opponent["name"], opponent["key"]))
+            print(str(opponent["name"]) + " " + str(opponent["key"]))
 
     def remove_opponent(self, key):
-        for player in self.opponents:
-            if player.connection.player_key == key:
-                self.opponents.remove(player)
+        for opponent in self.opponents:
+            if opponent.connection.player_key == key:
+                self.opponents.remove(opponent)
                 break
 
-    def update_menu(self):
-        self.screen.blit(self.background, (0, 0))
-        pygame.display.update()
+    def find_host(self, host_key):
+        if self.player.connection.player_key == host_key:
+            self.host = self.player
+        else:
+            for opponent in self.opponents:
+                if opponent.connection.player_key == host_key:
+                    self.host = opponent
+                    break
+
+    def start(self):
+        self.player.connection.start_session(self.player.name, self.player.connection.session_code)
+        self.play()
+
+    def play(self):
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+
+            if not self.check_game_over():
+                self.update_screen()
 
     def update_screen(self):
         # self.screen.fill((0, 0, 0))
