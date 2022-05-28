@@ -29,7 +29,7 @@ def _cancel_all_tasks(loop: asyncio.AbstractEventLoop) -> None:
 async def run_app() -> int:
     app = App()
     try:
-        await app.run()
+        return await app.run()
     finally:
         await app.close()
 

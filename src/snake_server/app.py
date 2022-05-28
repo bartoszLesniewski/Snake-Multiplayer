@@ -30,6 +30,7 @@ class App:
     async def run(self) -> int:
         self.setup_logging()
         await self.run_server()
+        return 0
 
     async def close(self) -> None:
         async with self.sessions_lock:
