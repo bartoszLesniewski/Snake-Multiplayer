@@ -210,7 +210,10 @@ class Connection:
         )
 
     async def send_session_start(self, session: Session) -> None:
-        await self.send_message(MsgType.SESSION_START, {"code": session.code})
+        await self.send_message(
+            MsgType.SESSION_START,
+            {"code": session.code, "state": session.get_state()},
+        )
 
     async def send_session_state_update(
         self, session: Session, state: dict[str, Any]
