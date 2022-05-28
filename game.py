@@ -153,7 +153,9 @@ class Game:
         if result is not None and result[0] == Message.SESSION_STATE_UPDATE:
             self.update_game_state(result[1])
             while True:
-                # result = self.connection.check_for_message()
+                result = self.connection.check_for_message()
+                if result is not None:
+                    self.update_game_state(result[1])
                 # print(result)
 
                 for event in pygame.event.get():
