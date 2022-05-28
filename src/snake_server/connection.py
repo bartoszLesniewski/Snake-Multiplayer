@@ -55,7 +55,9 @@ class Connection:
             try:
                 message = json.loads(payload)
             except json.JSONDecodeError as exc:
-                self.log.warning("Received a malformed JSON payload from the client.")
+                self.log.warning(
+                    "Received a malformed JSON payload from the client: %s", exc
+                )
                 break
             if not isinstance(message, dict):
                 self.log.warning(
