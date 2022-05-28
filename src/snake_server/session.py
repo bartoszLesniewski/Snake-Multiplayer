@@ -449,7 +449,8 @@ class Session:
         if len(self.alive_players) <= 1:
             # make sure we don't give back control to the caller
             # before we send session_end message
-            await self.task
+            if self.task is not None:
+                await self.task
 
     async def _disconnect_from_not_running(self, connection: Connection) -> None:
         del self.players[connection.key]
