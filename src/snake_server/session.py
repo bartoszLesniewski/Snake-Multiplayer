@@ -21,6 +21,9 @@ log = logging.getLogger(__name__)
 class SessionPlayer:
     def __init__(self, conn: Connection, name: str) -> None:
         self.conn = conn
+        if self.conn.session is None:
+            raise RuntimeError("conn.session cannot be None.")
+        self.session = self.conn.session
         self.name = name
         self.chunks: deque[tuple[int, int]] = deque()
         self.direction = Direction.UP
@@ -39,10 +42,6 @@ class SessionPlayer:
     @property
     def key(self) -> str:
         return self.conn.key
-
-    @property
-    def session(self) -> str:
-        return self.conn.session
 
     def to_dict(self) -> dict[str, Any]:
         return {
