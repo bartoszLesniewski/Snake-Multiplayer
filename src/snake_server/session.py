@@ -52,7 +52,9 @@ class SessionPlayer:
             "direction": self.direction.value,
         }
 
-    def __eq__(self, other: SessionPlayer) -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         return self.conn is other.conn
 
     def move(self) -> None:
