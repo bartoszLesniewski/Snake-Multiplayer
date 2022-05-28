@@ -134,3 +134,6 @@ dmypy.json
 .vscode/
 *.sublime-project
 *.sublime-workspace
+
+# snake_server config file
+snake_server_config.ini

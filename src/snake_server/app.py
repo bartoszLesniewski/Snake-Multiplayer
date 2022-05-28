@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import configparser
 import datetime
 import logging
 import os
@@ -29,6 +30,23 @@ class App:
 
     async def run(self) -> int:
         self.setup_logging()
+        try:
+            self.load_config()
+        except (configparser.NoSectionError, configparser.NoOptionError) as exc:
+            log.error(
+                "Failed to load configuration file (snake_server_config.ini): %s", exc
+            )
+            return 2
+        except ValueError:
+            log.error("Expected an integer for 'port' key in the configuration file.")
+            return 2
+        except FileNotFoundError:
+            log.error(
+                "A configuration file snake_server_config.ini does not exist"
+                " in the current directory. You can see an example configuration in"
+                " snake_server_config.ini.example file."
+            )
+            return 2
         await self.run_server()
         return 0
 
@@ -58,6 +76,13 @@ class App:
         if sys.stderr is not None:
             stream_handler = logging.StreamHandler(sys.stderr)
             root_logger.addHandler(stream_handler)
+
+    def load_config(self) -> None:
+        config = configparser.ConfigParser()
+        with open("snake_server_config.ini") as fp:
+            config.read_file(fp)
+        self.host = config.get("snake_server", "host")
+        self.port = config.getint("snake_server", "port")
 
     async def run_server(self) -> int:
         log.info("Starting a socket server on %s:%s...", self.host, self.port)
