@@ -6,7 +6,7 @@ import logging
 from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING, Any
 
-from .enums import MsgType
+from .enums import Direction, MsgType
 
 if TYPE_CHECKING:
     from .app import App
@@ -174,6 +174,38 @@ class Connection:
 
         await self.session.start()
         self.log.info("Started a session with code %r", self.session.code)
+
+    async def handle_input(self, data: dict[str, Any]) -> None:
+        direction_value = data["new_direction"]
+        if self.session is None:
+            await self.send_message(MsgType.NOT_IN_SESSION, {})
+            return
+        if not self.session.running:
+            await self.send_message(MsgType.INVALID_SESSION, {"exists": True})
+            return
+
+        try:
+            new_direction = Direction(direction_value)
+        except ValueError:
+            self.log.warning(
+                "Received a message with invalid value of 'new_direction' key."
+            )
+            await self.close()
+            return
+
+        try:
+            player = self.session.alive_players[self.key]
+        except KeyError:
+            self.log.warning(
+                "Received an input message from a player that is not alive."
+            )
+            # this is unnecessary traffic but it's harmless so let's just ignore it
+            return
+
+        if new_direction in (player.direction, player.direction.opposite):
+            return
+        player.direction = new_direction
+        self.log.info("Updated player's direction to %s.", new_direction.name)
 
     async def send_session_join(self, session: Session, player: SessionPlayer) -> None:
         payload = {
