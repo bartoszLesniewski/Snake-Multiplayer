@@ -375,8 +375,7 @@ class Session:
             self.current_deaths.append(self.alive_players.pop(key))
 
     def generate_apples(self) -> None:
-        # for now, there can only be one apple in the game
-        if self.apples:
+        if len(self.apples) >= self.app.apple_count:
             return
 
         taken_positions: set[tuple[int, int]] = set()

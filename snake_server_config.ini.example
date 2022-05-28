@@ -6,3 +6,4 @@ port = 8888
 game_speed = 5
 initial_chunk_amount = 4
 tick_interval = 50
+apple_count = 1

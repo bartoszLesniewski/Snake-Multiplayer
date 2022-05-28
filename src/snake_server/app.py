@@ -49,6 +49,7 @@ class App:
         self.grid_width = 40
         self.grid_height = 30
         self.initial_chunk_amount = 4
+        self.apple_count = 1
         self.sessions: dict[str, Session] = {}
         self.sessions_lock = asyncio.Lock()
         self.connections: dict[str, Connection] = {}
@@ -116,6 +117,7 @@ class App:
             self.initial_chunk_amount = config_getint(
                 config, "initial_chunk_amount", fallback=4
             )
+            self.apple_count = config_getint(config, "apple_count", fallback=1)
         except ValueError as exc:
             log.error(
                 "Expected an integer for %r key in the configuration file.", exc.args[0]
