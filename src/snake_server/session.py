@@ -474,7 +474,7 @@ def choose_losers(players: Sequence[SessionPlayer]) -> Generator[str, None, None
     if not players:
         return
     if len(players) == 1:
-        yield players[0]
+        yield players[0].key
         return
 
     m = max(len(p.chunks) for p in players)
