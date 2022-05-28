@@ -9,3 +9,4 @@ class Player:
         self.name = name
         # self.connection = Connection(key)
         self.key = key
+        self.is_alive = True

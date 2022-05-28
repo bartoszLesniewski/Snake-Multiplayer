@@ -20,7 +20,7 @@ class Snake (pygame.sprite.Sprite):
         self.segments.append(Segment(400, 340))
         self.segments.append(Segment(400, 360))
 
-    def update_segments(self, chunks):
+    def update_segments(self, chunks, direction):
         self.segments.clear()
         for segment in chunks:
             self.segments.append(Segment(segment[0] * SEGMENT_SIZE, segment[1] * SEGMENT_SIZE))
@@ -28,7 +28,7 @@ class Snake (pygame.sprite.Sprite):
         self.head = self.create_head(chunks[0][0] * SEGMENT_SIZE, chunks[0][1] * SEGMENT_SIZE)
         self.segments[0] = self.head
 
-        # self.direction = direction
+        self.direction = Direction(direction).name
 
     def move(self, new_segment):
         # print("Start number of segments: " + str(len(self.segments)))

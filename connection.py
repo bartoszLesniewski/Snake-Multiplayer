@@ -2,6 +2,9 @@ import json
 import select
 import socket
 
+import pygame
+
+from direction import Direction
 from messages import Message
 
 
@@ -63,6 +66,8 @@ class Connection:
                 return Message.SESSION_START, None
             elif msg["type"] == Message.SESSION_STATE_UPDATE.value:
                 return Message.SESSION_STATE_UPDATE, msg["data"]
+            elif msg["type"] == Message.SESSION_END.value:
+                return Message.SESSION_END, msg["data"]
             else:
                 return None, None
         else:
@@ -81,3 +86,18 @@ class Connection:
         data = {"code": code, "player_name": player_name}
         self.send_message(Message.START_SESSION, data)
         msg = self.receive_message()
+
+    def send_direction_change(self, pressed_keys, actual_direction):
+        new_direction = actual_direction
+        if pressed_keys[pygame.K_UP] and actual_direction != Direction.DOWN:
+            new_direction = Direction.UP
+        elif pressed_keys[pygame.K_DOWN] and actual_direction != Direction.UP:
+            new_direction = Direction.DOWN
+        elif pressed_keys[pygame.K_RIGHT] and actual_direction != Direction.LEFT:
+            new_direction = Direction.RIGHT
+        elif pressed_keys[pygame.K_LEFT] and actual_direction != Direction.RIGHT:
+            new_direction = Direction.LEFT
+
+        if new_direction != actual_direction:
+            data = {"new_direction": new_direction.value}
+            self.send_message(Message.INPUT, data)
