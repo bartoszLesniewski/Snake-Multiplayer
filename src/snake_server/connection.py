@@ -208,7 +208,7 @@ class Connection:
         self.log.info("Updated player's direction to %s.", new_direction.name)
 
     async def send_session_join(self, session: Session, player: SessionPlayer) -> None:
-        payload = {
+        payload: dict[str, Any] = {
             "code": session.code,
             "player": player.to_dict(),
             "owner_key": session.owner.key,

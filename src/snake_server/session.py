@@ -385,7 +385,7 @@ class Session:
         if self.apples:
             return
 
-        taken_positions = set()
+        taken_positions: set[tuple[int, int]] = set()
         for player in self.alive_players.values():
             taken_positions.update(player.chunks)
         taken_positions.update(self.apples)
