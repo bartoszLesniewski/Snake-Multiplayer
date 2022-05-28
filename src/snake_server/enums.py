@@ -36,23 +36,23 @@ class Direction(enum.Enum):
     @property
     def offset(self) -> tuple[int, int]:
         match self:
-            case self.UP:
+            case Direction.UP:
                 return (0, -1)
-            case self.DOWN:
+            case Direction.DOWN:
                 return (0, 1)
-            case self.RIGHT:
+            case Direction.RIGHT:
                 return (1, 0)
-            case self.LEFT:
+            case Direction.LEFT:
                 return (-1, 0)
 
     @property
     def opposite(self) -> Direction:
         match self:
-            case self.UP:
-                return self.DOWN
-            case self.DOWN:
-                return self.UP
-            case self.RIGHT:
-                return self.LEFT
-            case self.LEFT:
-                return self.RIGHT
+            case Direction.UP:
+                return Direction.DOWN
+            case Direction.DOWN:
+                return Direction.UP
+            case Direction.RIGHT:
+                return Direction.LEFT
+            case Direction.LEFT:
+                return Direction.RIGHT
