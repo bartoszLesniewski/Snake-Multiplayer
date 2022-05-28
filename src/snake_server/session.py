@@ -6,7 +6,7 @@ import itertools
 import logging
 import random
 from collections import defaultdict, deque
-from collections.abc import Collection, Generator
+from collections.abc import Generator, Sequence
 from typing import TYPE_CHECKING, Any
 
 from .enums import Direction
@@ -470,8 +470,11 @@ class Session:
         await connection.send_session_leave(self, connection.key)
 
 
-def choose_losers(players: Collection[SessionPlayer]) -> Generator[str, None, None]:
+def choose_losers(players: Sequence[SessionPlayer]) -> Generator[str, None, None]:
     if not players:
+        return
+    if len(players) == 1:
+        yield players[0]
         return
 
     m = max(len(p.chunks) for p in players)
