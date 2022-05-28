@@ -22,7 +22,6 @@ class SessionPlayer:
     def __init__(self, conn: Connection, name: str) -> None:
         self.conn = conn
         self.name = name
-        self.alive = True
         self.chunks: deque[tuple[int, int]] = deque()
         self.direction = Direction.UP
 
