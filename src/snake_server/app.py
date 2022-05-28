@@ -13,6 +13,31 @@ from .utils import generate_invite_code
 
 log = logging.getLogger(__name__)
 
+CONFIG_SECTION_NAME = "snake_server"
+
+
+def config_get(config: configparser.ConfigParser, option: str) -> str:
+    return config.get(CONFIG_SECTION_NAME, option)
+
+
+def config_getint(
+    config: configparser.ConfigParser,
+    option: str,
+    *,
+    fallback: int | None = None,
+) -> int:
+    try:
+        raw_value = config.get(CONFIG_SECTION_NAME, option)
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        if fallback is not None:
+            return fallback
+        raise
+
+    try:
+        return int(raw_value)
+    except ValueError:
+        raise ValueError(option)
+
 
 class App:
     def __init__(self) -> None:
@@ -38,7 +63,6 @@ class App:
             )
             return 2
         except ValueError:
-            log.error("Expected an integer for 'port' key in the configuration file.")
             return 2
         except FileNotFoundError:
             log.error(
@@ -81,8 +105,22 @@ class App:
         config = configparser.ConfigParser()
         with open("snake_server_config.ini") as fp:
             config.read_file(fp)
-        self.host = config.get("snake_server", "host")
-        self.port = config.getint("snake_server", "port")
+
+        self.host = config_get(config, "host")
+        try:
+            self.port = config_getint(config, "port")
+            self.tick_interval = datetime.timedelta(
+                milliseconds=config_getint(config, "tick_interval", fallback=50)
+            )
+            self.game_speed = config_getint(config, "game_speed", fallback=5)
+            self.initial_chunk_amount = config_getint(
+                config, "initial_chunk_amount", fallback=4
+            )
+        except ValueError as exc:
+            log.error(
+                "Expected an integer for %r key in the configuration file.", exc.args[0]
+            )
+            raise
 
     async def run_server(self) -> int:
         log.info("Starting a socket server on %s:%s...", self.host, self.port)

@@ -1,3 +1,8 @@
 [snake_server]
+# required options
 host = 0.0.0.0
 port = 8888
+# optional options
+game_speed = 5
+initial_chunk_amount = 4
+tick_interval = 50
