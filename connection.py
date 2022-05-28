@@ -6,11 +6,11 @@ from messages import Message
 
 
 class Connection:
-    def __init__(self, key=None, server_address="127.0.0.1", server_port=8888):
+    def __init__(self, server_address="127.0.0.1", server_port=8888):
         self.server_address = server_address
         self.server_port = server_port
         self.session_code = None
-        self.player_key = key
+        # self.player_key = key
         self.socket = socket.socket()
         self.writer = None
         self.reader = None
@@ -18,9 +18,11 @@ class Connection:
     def connect(self):
         self.socket.connect((self.server_address, self.server_port))
         sockname = self.socket.getsockname()
-        self.player_key = str(sockname[0]) + ":" + str(sockname[1])
+        player_key = str(sockname[0]) + ":" + str(sockname[1])
         self.writer = self.socket.makefile("wb")
         self.reader = self.socket.makefile("rb")
+
+        return player_key
 
     def create_session(self, player_name):
         data = {"player_name": player_name}
@@ -49,7 +51,7 @@ class Connection:
         response, _, _ = select.select([self.socket], [], [], 0.0001)
         if response:
             line = self.reader.readline().decode()
-            print(line)
+            print("MESASGE FROM SERVER: " + line)
             msg = json.loads(line)
             # print(msg)
             if msg["type"] == Message.SESSION_JOIN.value:
@@ -59,6 +61,8 @@ class Connection:
                 return Message.SESSION_LEAVE, msg["data"]
             elif msg["type"] == Message.SESSION_START.value:
                 return Message.SESSION_START, None
+            else:
+                return msg
         else:
             # print("No message")
             return None
@@ -75,5 +79,3 @@ class Connection:
         data = {"code": code, "player_name": player_name}
         self.send_message(Message.START_SESSION, data)
         msg = self.receive_message()
-
-

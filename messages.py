@@ -12,3 +12,4 @@ class Message(Enum):
     SESSION_LEAVE = "session_leave"
     SESSION_START = "session_start"
     SESSION_END = "session_end"
+    SESSION_STATE_UPDATE = "session_state_update"

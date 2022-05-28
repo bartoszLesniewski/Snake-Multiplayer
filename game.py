@@ -3,8 +3,8 @@ import pygame
 import pygame_menu
 from pygame_menu import Theme
 
-import player
 from apple import Apple
+from connection import Connection
 from messages import Message
 from player import Player
 from constans import *
@@ -18,6 +18,7 @@ class Game:
         self.background = pygame.image.load("img/background.jpg")
 
         self.player = None
+        self.connection = Connection()
         self.host = None
         self.opponents = []
         self.apple = Apple()
@@ -66,19 +67,19 @@ class Game:
         pygame.display.update()
 
     def lobby(self, player_input, choice, code):
-        self.player = Player(player_input.get_value())
-        self.player.connection.connect()
+        player_key = self.connection.connect()
+        self.player = Player(player_input.get_value(), player_key)
 
         if choice == "NEW_GAME":
-            self.player.connection.create_session(self.player.name)
+            self.connection.create_session(self.player.name)
             self.host = self.player
         elif choice == "JOIN_GAME":
-            msg_data = self.player.connection.join_session(self.player.name, code.get_value())
+            msg_data = self.connection.join_session(self.player.name, code.get_value())
             self.add_opponents(msg_data["players"])
             self.find_host(msg_data["owner_key"])
 
         while True:
-            result = self.player.connection.check_for_message()
+            result = self.connection.check_for_message()
             if result is not None:
                 if result[0] == Message.SESSION_JOIN:
                     self.add_opponents(result[1])
@@ -103,7 +104,7 @@ class Game:
             menu.add.label("- " + opponent.name + info)
 
         if self.player == self.host:
-            menu.add.label("Your lobby code: " + self.player.connection.session_code)
+            menu.add.label("Your lobby code: " + self.connection.session_code)
             menu.add.label("Pass it to your friends so they can join the game!")
             menu.add.button("Start game", self.start, background_color=GREEN)
 
@@ -130,25 +131,28 @@ class Game:
 
     def remove_opponent(self, key):
         for opponent in self.opponents:
-            if opponent.connection.player_key == key:
+            if opponent.key == key:
                 self.opponents.remove(opponent)
                 break
 
     def find_host(self, host_key):
-        if self.player.connection.player_key == host_key:
+        if self.player.key == host_key:
             self.host = self.player
         else:
             for opponent in self.opponents:
-                if opponent.connection.player_key == host_key:
+                if opponent.key == host_key:
                     self.host = opponent
                     break
 
     def start(self):
-        self.player.connection.start_session(self.player.name, self.player.connection.session_code)
+        self.connection.start_session(self.player.name, self.connection.session_code)
         self.play()
 
     def play(self):
         while True:
+            result = self.connection.check_for_message()
+            #print(result)
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
