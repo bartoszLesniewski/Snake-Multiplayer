@@ -75,7 +75,7 @@ class Connection:
             try:
                 handler_func = getattr(self, f"handle_{msg_type}")
             except AttributeError:
-                log.warning(
+                self.log.warning(
                     "Received a message of invalid type %r, disconnecting...",
                     msg_type,
                 )

@@ -313,7 +313,7 @@ class Session:
                 deaths.update(choose_losers(potential_losers))
 
         for key in deaths:
-            self.current_deaths.append(self.alive_players.pop(loser.key))
+            self.current_deaths.append(self.alive_players.pop(key))
 
     def handle_head_overlap_collisions(self) -> None:
         """
