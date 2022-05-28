@@ -80,8 +80,10 @@ class Session:
         self.players: dict[str, SessionPlayer] = {self.owner.key: self.owner}
         #: stores alive (and still connected) players
         self.alive_players: dict[str, SessionPlayer] = self.players.copy()
-        #: list of deaths ordered by death time (most recent death is the last entry)
-        self.dead_players: list[SessionPlayer] = []
+        #: list of leaderboard places in reverse order (last place is first entry)
+        self.leaderboard: list[list[SessionPlayer]] = []
+        #: list of deaths that happened at current tick (used for accurate leaderboard)
+        self.current_deaths: list[SessionPlayer] = []
         self.apples: set[tuple[int, int]] = set()
 
         self.running = False
@@ -163,6 +165,7 @@ class Session:
     async def run(self) -> None:
         self.last_tick_time = datetime.datetime.now(datetime.timezone.utc)
         while len(self.alive_players) > 1:
+            self.update_leaderboard()
             self.tick += 1
 
             if self.update_positions():
@@ -187,11 +190,33 @@ class Session:
         await self.finish_game()
 
     async def finish_game(self) -> None:
+        self.update_leaderboard()
+        if self.alive_players:
+            # this loop should always only have a single iteration
+            for player in self.alive_players.values():
+                self.current_deaths.append(player)
+            self.update_leaderboard()
+
+        leaderboard_data = [
+            [p.to_dict() for p in place] for place in reversed(self.leaderboard)
+        ]
         await asyncio.gather(
-            *(player.conn.send_session_end(self) for player in self.players.values())
+            *(
+                player.conn.send_session_end(self, leaderboard_data)
+                for player in self.players.values()
+            )
         )
 
         await self.app.remove_session(self)
+
+    def update_leaderboard(self) -> None:
+        if not self.current_deaths:
+            return
+        keyfunc = lambda p: len(p.chunks)
+        self.current_deaths.sort(key=keyfunc)
+        for _, place in itertools.groupby(self.current_deaths, key=keyfunc):
+            self.leaderboard.append(list(place))
+        self.current_deaths.clear()
 
     def update_positions(self) -> bool:
         if self.tick % self.app.game_speed:
@@ -209,7 +234,7 @@ class Session:
             if x < 0 or x >= self.app.grid_width or y < 0 or y >= self.app.grid_height:
                 to_remove.append(player.key)
         for key in to_remove:
-            self.dead_players[key] = self.alive_players.pop(key)
+            self.current_deaths.append(self.alive_players.pop(key))
 
     def handle_tail_self_cutting(self) -> None:
         """Handle a collision with your own tail by cutting it in that spot."""
@@ -287,7 +312,7 @@ class Session:
                 deaths.update(choose_losers(potential_losers))
 
         for key in deaths:
-            self.dead_players[loser.key] = self.alive_players.pop(loser.key)
+            self.current_deaths.append(self.alive_players.pop(loser.key))
 
     def handle_head_overlap_collisions(self) -> None:
         """
@@ -318,7 +343,7 @@ class Session:
         for players in overlapping_heads.values():
             if len(players) > 1:
                 for key in choose_losers(players):
-                    self.dead_players[key] = self.alive_players.pop(key)
+                    self.current_deaths.append(self.alive_players.pop(key))
 
     def handle_head_on_collisions(self) -> None:
         """
@@ -350,7 +375,7 @@ class Session:
                 deaths.update(choose_losers((p1, p2)))
 
         for key in deaths:
-            self.dead_players[key] = self.alive_players.pop(key)
+            self.current_deaths.append(self.alive_players.pop(key))
 
     def generate_apples(self) -> None:
         # for now, there can only be one apple in the game
@@ -406,7 +431,7 @@ class Session:
                 # tried to disconnect a player that is not part of the session
                 raise
 
-        self.dead_players.append(player)
+        self.current_deaths.append(player)
 
         if self.alive_players and self.owner == player:
             self.owner = next(iter(self.alive_players.values()))

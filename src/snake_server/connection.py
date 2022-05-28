@@ -233,14 +233,14 @@ class Connection:
                 {"code": session.code, "key": key, "owner_key": session.owner.key},
             )
 
-    async def send_session_end(self, session: Session) -> None:
+    async def send_session_end(
+        self, session: Session, leaderboard_data: list[list[dict[str, Any]]]
+    ) -> None:
         self.session = None
-        leaderboard = [player.to_dict() for player in session.dead_players]
-        leaderboard.reverse()
         if not self.writer.is_closing():
             await self.send_message(
                 MsgType.SESSION_END,
-                {"code": session.code, "leaderboard": leaderboard},
+                {"code": session.code, "leaderboard": leaderboard_data},
             )
             await self.close()
 
