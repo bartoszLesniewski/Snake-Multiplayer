@@ -302,7 +302,7 @@ class Session:
                 # head overlap collision
                 p1.head != p2.head
                 # head-on collision
-                and (p1.chunks[0] != p2.chunks[1] and p2.chunks[0] != p1.chunks[1])
+                and (p1.chunks[0] != p2.chunks[1] or p2.chunks[0] != p1.chunks[1])
             ):
                 potential_losers = []
                 if p1.head in p2.chunks:
