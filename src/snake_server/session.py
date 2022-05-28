@@ -474,7 +474,7 @@ def choose_losers(players: Collection[SessionPlayer]) -> Generator[str, None, No
     if not players:
         return
 
-    m = max(players, key=lambda p: len(p.chunks))
+    m = max(len(p.chunks) for p in players)
     winner = random.choice([p for p in players if len(p.chunks) == m])
     for player in players:
         if player != winner:
