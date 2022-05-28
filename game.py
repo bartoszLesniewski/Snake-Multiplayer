@@ -195,7 +195,7 @@ class Game:
         # print(self.snake.head.rect.x, self.snake.head.rect.y)
         # print("Apple position: " + str(self.apple.rect.x) + " " + str(self.apple.rect.y))
         pygame.display.update()
-        self.fps.tick(FPS)
+        # self.fps.tick(FPS)
 
     def update_game_state(self, data):
         self.apple = Apple(data["apples"][0])

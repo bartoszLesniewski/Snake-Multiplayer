@@ -9,7 +9,7 @@ from messages import Message
 
 
 class Connection:
-    def __init__(self, server_address="127.0.0.1", server_port=8888):
+    def __init__(self, server_address="192.168.0.12", server_port=8888):
         self.server_address = server_address
         self.server_port = server_port
         self.session_code = None
