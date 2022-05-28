@@ -72,11 +72,26 @@ class Game:
 
     def lobby(self, player_input, choice, code):
         self.player = Player(player_input.get_value())
-        #self.player.connection.connect()
-        #self.player.connection.create_session()
+        self.player.connection.connect()
 
+        if choice == "NEW_GAME":
+            self.player.connection.create_session(self.player.name)
+        elif choice == "JOIN_GAME":
+            self.player.connection.join_session(self.player.name, code)
 
-        self.update_menu()
+        while True:
+            # print("Tu")
+            result = self.player.connection.check_for_join()
+            if result is not None:
+                if result[0] == "JOIN":
+                    self.add_opponents(result[1])
+                elif result[0] == "LEAVE":
+                    self.remove_opponent(result[1])
+
+            self.update_lobby(choice)
+
+    def update_lobby(self, choice):
+        self.screen.blit(self.background, (0, 0))
         menu = self.set_menu_parameters(30, "Lobby")
         menu.add.label("Waiting players:")
         menu.add.label("- " + str(self.player.name) + " (host)")
@@ -92,7 +107,29 @@ class Game:
         else:
             menu.add.label("Wait for the host to start a game...")
 
-        menu.mainloop(self.screen)
+        events = pygame.event.get()
+        for event in events:
+            if event.type == pygame.QUIT:
+                exit()
+
+        if menu.is_enabled():
+            menu.update(events)
+            menu.draw(self.screen)
+
+        pygame.display.update()
+
+    def add_opponents(self, players):
+        print(str(players))
+        for player in players:
+            if player["name"] != self.player.name:
+                self.opponents.append(Player(player["name"], player["key"]))
+            print(str(player["name"]) + " " + str(player["key"]))
+
+    def remove_opponent(self, key):
+        for player in self.opponents:
+            if player.connection.player_key == key:
+                self.opponents.remove(player)
+                break
 
     def update_menu(self):
         self.screen.blit(self.background, (0, 0))
