@@ -13,7 +13,6 @@ class Connection:
         self.server_address = server_address
         self.server_port = server_port
         self.session_code = None
-        # self.player_key = key
         self.socket = socket.socket()
         self.writer = None
         self.reader = None
@@ -32,8 +31,6 @@ class Connection:
         self.send_message(Message.CREATE_SESSION, data)
         msg = self.receive_message()
         self.session_code = msg["data"]["code"]
-        # self.send_message(Message.START_SESSION, data)
-        # self.receive_message()
 
     def send_message(self, msg_type, data):
         msg = json.dumps(
@@ -56,7 +53,6 @@ class Connection:
             line = self.reader.readline().decode()
             print("MESASGE FROM SERVER: " + line)
             msg = json.loads(line)
-            # print(msg)
             if msg["type"] == Message.SESSION_JOIN.value:
                 players = msg["data"]["players"]
                 return Message.SESSION_JOIN, players
@@ -71,8 +67,7 @@ class Connection:
             else:
                 return None, None
         else:
-            # print("No message")
-            return None
+            return None, None
 
     def join_session(self, player_name, code):
         data = {"code": code, "player_name": player_name}

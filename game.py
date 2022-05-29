@@ -92,7 +92,6 @@ class Game:
             self.update_lobby()
 
     def update_lobby(self):
-        # self.screen.blit(self.background, (0, 0))
         self.menu = self.set_menu_parameters(30, "Lobby")
         self.menu.add.label("Waiting players:")
         info = " (you)"
@@ -174,9 +173,7 @@ class Game:
             self.play()
 
     def update_screen(self):
-        # self.screen.fill((0, 0, 0))
         self.screen.blit(self.background, (0, 0))
-        # screen.blit(snake.surface, snake.rect)
 
         if self.player.is_alive:
             self.player.snake.draw(self.screen)
@@ -186,16 +183,10 @@ class Game:
 
         self.apple.draw(self.screen)
 
-        # self.player.snake.change_direction(pygame.key.get_pressed())
         if self.player.is_alive:
             self.connection.send_direction_change(pygame.key.get_pressed(), self.player.snake.direction)
 
-        # self.player.snake.move(self.check_collision())
-
-        # print(self.snake.head.rect.x, self.snake.head.rect.y)
-        # print("Apple position: " + str(self.apple.rect.x) + " " + str(self.apple.rect.y))
         pygame.display.update()
-        # self.fps.tick(FPS)
 
     def update_game_state(self, data):
         self.apple = Apple(data["apples"][0])
@@ -217,35 +208,6 @@ class Game:
                 alive_opponents[-1].snake.update_segments(alive_player["chunks"], alive_player["direction"])
 
             self.opponents = alive_opponents
-
-    def check_collision(self):
-        if self.player.snake.head.rect.colliderect(self.apple.rect):
-            self.apple = Apple()
-            return True
-
-        for cnt, segment in enumerate(self.player.snake.segments):
-            if segment != self.player.snake.head and self.player.snake.head.rect.colliderect(segment.rect):
-                self.player.snake.segments = [self.player.snake.segments[i] for i in range(cnt)]
-                return False
-
-        return False
-
-    def check_game_over(self):
-        result = False
-        if self.player.snake.head.rect.x < 0 or self.player.snake.head.rect.x + SEGMENT_SIZE > WIDTH \
-                or self.player.snake.head.rect.y < 0 or self.player.snake.head.rect.y + SEGMENT_SIZE > HEIGHT:
-            result = True
-
-        # game over when collision with tail
-        # for segment in self.snake.segments:
-        #    if segment != self.snake.head and self.snake.head.rect.colliderect(segment.rect):
-        #        result = True
-        #       break
-
-        if result:
-            self.show_game_over_screen()
-
-        return result
 
     def show_game_over_screen(self):
         print("GAME OVER")
