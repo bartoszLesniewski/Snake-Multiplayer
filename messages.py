@@ -4,7 +4,7 @@ from enum import Enum
 class Message(Enum):
     # messages send to server
     CREATE_SESSION = "create_session"
-    JOIN_SESSION = "join"
+    JOIN_SESSION = "join_session"
     START_SESSION = "start_session"
     INPUT = "input"
 
