@@ -110,11 +110,15 @@ class App:
         try:
             self.port = config_getint(config, "port")
             self.tick_interval = datetime.timedelta(
-                milliseconds=config_getint(config, "tick_interval", fallback=50)
+                milliseconds=config_getint(
+                    config, "tick_interval", fallback=self.tick_interval
+                )
             )
-            self.game_speed = config_getint(config, "game_speed", fallback=5)
+            self.game_speed = config_getint(
+                config, "game_speed", fallback=self.game_speed
+            )
             self.initial_chunk_amount = config_getint(
-                config, "initial_chunk_amount", fallback=4
+                config, "initial_chunk_amount", fallback=self.initial_chunk_amount
             )
         except ValueError as exc:
             log.error(
