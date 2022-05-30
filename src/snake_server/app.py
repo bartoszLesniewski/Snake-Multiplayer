@@ -45,7 +45,7 @@ class App:
         self.port = 8888
         self.tick_interval = datetime.timedelta(milliseconds=50)
         #: players move once every `game_speed` ticks
-        self.game_speed = 5
+        self.game_speed = 1
         self.grid_width = 40
         self.grid_height = 30
         self.initial_chunk_amount = 4
