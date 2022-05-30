@@ -11,14 +11,14 @@ from constans import *
 
 
 class Game:
-    def __init__(self):
+    def __init__(self, server_address):
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Snake Multiplayer")
         self.background = pygame.image.load("img/background.jpg")
 
         self.player = None
-        self.connection = Connection()
+        self.connection = Connection(server_address)
         self.host = None
         self.opponents = []
         self.apple = None
