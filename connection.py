@@ -1,11 +1,14 @@
 import json
 import select
 import socket
-
 import pygame
+import logging
 
 from direction import Direction
 from messages import Message
+
+
+logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
 
 class Connection:
@@ -18,13 +21,17 @@ class Connection:
         self.reader = None
 
     def connect(self):
-        self.socket.connect((self.server_address, self.server_port))
-        sockname = self.socket.getsockname()
-        player_key = str(sockname[0]) + ":" + str(sockname[1])
-        self.writer = self.socket.makefile("wb")
-        self.reader = self.socket.makefile("rb")
+        try:
+            self.socket.connect((self.server_address, self.server_port))
+            sockname = self.socket.getsockname()
+            player_key = str(sockname[0]) + ":" + str(sockname[1])
+            self.writer = self.socket.makefile("wb")
+            self.reader = self.socket.makefile("rb")
 
-        return player_key
+            return player_key
+        except socket.error:
+            logging.error("Error connecting to server. Please try again later...")
+            exit(-1)
 
     def create_session(self, player_name):
         data = {"player_name": player_name}
@@ -73,9 +80,14 @@ class Connection:
         data = {"code": code, "player_name": player_name}
         self.send_message(Message.JOIN_SESSION, data)
         msg = self.receive_message()
-        self.session_code = msg["data"]["code"]
 
-        return msg["data"]
+        if msg["type"] == Message.INVALID_SESSION.value:
+            logging.error("Cannot join this session. Check if you entered the correct code and try again.")
+            exit(-1)
+
+        else:
+            self.session_code = msg["data"]["code"]
+            return msg["data"]
 
     def start_session(self, player_name, code):
         data = {"code": code, "player_name": player_name}
