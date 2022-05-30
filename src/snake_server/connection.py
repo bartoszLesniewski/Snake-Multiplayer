@@ -149,9 +149,7 @@ class Connection:
         if previous_session is not None and previous_session is not session:
             await previous_session.disconnect(self)
 
-        if session.is_name_taken(player_name):
-            await self.send_message(MsgType.PLAYER_NAME_ALREADY_TAKEN, {})
-            return
+        player_name = session.negotiate_name(player_name)
 
         self.session = session
         await self.session.connect(self, player_name)

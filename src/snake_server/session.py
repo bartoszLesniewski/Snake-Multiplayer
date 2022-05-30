@@ -92,8 +92,22 @@ class Session:
         #: this might be a time in the past or future
         self.last_tick_time = datetime.datetime.min
 
-    def is_name_taken(self, name: str) -> bool:
-        return any(player.name == name for player in self.players.values())
+    def get_names(self) -> set[str]:
+        return set(player.name for player in self.players.values())
+
+    def negotiate_name(self, preferred_name: str) -> str:
+        names = self.get_names()
+        if preferred_name not in names:
+            return preferred_name
+        name = preferred_name
+        for i in range(len(names)):
+            name = f"{preferred_name}{i}"
+            if name not in names:
+                break
+        else:
+            # this should never happen
+            raise RuntimeError("Failed to negotiate unique name for the player.")
+        return name
 
     async def start(self) -> None:
         self.running = True

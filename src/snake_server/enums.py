@@ -12,8 +12,6 @@ class MsgType(enum.Enum):
     NOT_IN_SESSION = "not_in_session"
     #: Session start failed because the client is not the session owner.
     NOT_SESSION_OWNER = "not_session_owner"
-    #: Player name is already taken by someone else in this session.
-    PLAYER_NAME_ALREADY_TAKEN = "player_name_already_taken"
 
     #: *Some* client joined a session. Possibly after creating it.
     SESSION_JOIN = "session_join"
