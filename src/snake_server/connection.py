@@ -131,7 +131,7 @@ class Connection:
         self.writer.write(f"{serialized}\n".encode())
         await self.writer.drain()
 
-    async def handle_join(self, data: dict[str, Any]) -> None:
+    async def handle_join_session(self, data: dict[str, Any]) -> None:
         code = data["code"]
         player_name = data["player_name"]
         try:
