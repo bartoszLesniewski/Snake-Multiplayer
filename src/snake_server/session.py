@@ -25,6 +25,7 @@ class SessionPlayer:
         self.name = name
         self.chunks: deque[tuple[int, int]] = deque()
         self.direction = Direction.UP
+        self.last_tail_piece: tuple[int, int] | None = None
 
     @property
     def conn(self) -> Connection:
@@ -63,10 +64,9 @@ class SessionPlayer:
         offset_x, offset_y = self.direction.offset
         self.chunks.appendleft((head_x + offset_x, head_y + offset_y))
 
-        for apple_pos in self._session.apples:
-            if apple_pos == self.head:
-                self._session.apples.remove(apple_pos)
-                break
+        self.last_tail_piece = None
+        if self.head in self._session.apples:
+            self.last_tail_piece = self.chunks.pop()
         else:
             self.chunks.pop()
 
@@ -201,6 +201,7 @@ class Session:
                 self._handle_wall_deaths()
                 self._handle_tail_self_cutting()
                 self._handle_collision_deaths()
+                self._handle_apple_eating()
 
             self._generate_apples()
 
@@ -273,11 +274,15 @@ class Session:
     def _handle_tail_self_cutting(self) -> None:
         """Handle a collision with your own tail by cutting it in that spot."""
         for player in self.alive_players.values():
+            if player.last_tail_piece == player.head:
+                player.last_tail_piece = None
+                continue
             try:
                 idx = player.chunks.index(player.head, 1)
             except ValueError:
                 pass
             else:
+                player.last_tail_piece = None
                 for _ in range(len(player.chunks) - idx):
                     player.chunks.pop()
 
@@ -285,6 +290,28 @@ class Session:
         self._handle_tail_collisions()
         self._handle_head_overlap_collisions()
         self._handle_head_on_collisions()
+
+    def _handle_apple_eating(self) -> None:
+        for player in self.alive_players.values():
+            if player.last_tail_piece is not None:
+                self.apples.remove(player.last_tail_piece)
+                player.chunks.append(player.last_tail_piece)
+                player.last_tail_piece = None
+
+        # simplified 'tail collision' handling - only check last tail piece
+        deaths: set[str] = set()
+        for p1, p2 in itertools.combinations(self.alive_players.values(), 2):
+            if p1.key in deaths or p2.key in deaths:
+                continue
+            potential_losers = []
+            if p1.head == p2.chunks[-1]:
+                potential_losers.append(p1)
+            if p2.head == p1.chunks[-1]:
+                potential_losers.append(p2)
+            deaths.update(_choose_losers(potential_losers))
+
+        for key in deaths:
+            self._current_deaths.append(self.alive_players.pop(key))
 
     def _handle_tail_collisions(self) -> None:
         """
