@@ -1,4 +1,6 @@
 import sys
+from socket import socket
+
 import pygame
 import pygame_menu
 from pygame_menu import Theme
@@ -8,9 +10,7 @@ from connection import Connection
 from messages import Message
 from player import Player
 from constans import *
-from tabulate import tabulate
-import io
-from contextlib import redirect_stdout
+
 
 class Game:
     def __init__(self, server_address):
@@ -24,10 +24,12 @@ class Game:
         self.host = None
         self.opponents = []
         self.apple = None
-        self.fps = pygame.time.Clock()
         self.menu = None
 
     def show_menu(self):
+        if self.menu is not None:
+            self.menu.disable()
+
         self.menu = self.set_menu_parameters(60, "Main menu")
         self.menu.add.button("New game", self.menu_with_input, "NEW_GAME",  background_color=GREEN)
         self.menu.add.button("Join game", self.menu_with_input, "JOIN_GAME", background_color=GREEN)
@@ -125,12 +127,10 @@ class Game:
         pygame.display.update()
 
     def add_opponents(self, players):
-        print(str(players))
         self.opponents.clear()
         for opponent in players:
             if opponent["name"] != self.player.name:
                 self.opponents.append(Player(opponent["name"], opponent["key"]))
-            print(str(opponent["name"]) + " " + str(opponent["key"]))
 
     def remove_opponent(self, key):
         for opponent in self.opponents:
@@ -169,10 +169,9 @@ class Game:
                     if result[0] == Message.SESSION_STATE_UPDATE:
                         self.update_game_state(result[1])
                     elif result[0] == Message.SESSION_END:
-                        print("GOT SESSION END")
-                        self.show_game_over_screen()
+                        self.show_end_screen(result[1]["leaderboard"])
                         break
-                # print(result)
+
         else:
             self.play()
 
@@ -214,18 +213,16 @@ class Game:
             self.opponents = alive_opponents
 
     def show_game_over_screen(self):
-        print("GAME OVER")
-        # self.menu.disable()
         self.menu = self.set_menu_parameters(70, "The end")
         self.menu.add.label("GAME OVER")
         self.menu.mainloop(self.screen)
 
-    def show_end_screen(self):
-        print("GAME OVER")
+    def show_end_screen(self, leaderboard):
         self.menu = self.set_menu_parameters(20, "The end")
-        self.menu.add.label(self.create_table([]), align=pygame_menu.locals.ALIGN_CENTER)
-        pygame_menu.widgets.Table("tab")
+        self.menu.add.label(self.create_table(leaderboard), align=pygame_menu.locals.ALIGN_CENTER)
         self.menu.add.button("Go back to menu", self.show_menu, background_color=GREEN)
+        # self.connection.socket = self.connection.socket.shutdown(socket.SHUT_RDWR)
+        # self.connection.socket = self.connection.socket.close()
         self.menu.mainloop(self.screen)
 
     def create_table(self, leaderboard):

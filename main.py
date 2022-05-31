@@ -11,8 +11,7 @@ def main():
         exit(-1)
 
     game = Game(sys.argv[1])
-    #game.show_menu()
-    game.show_end_screen()
+    game.show_menu()
 
 
 if __name__ == "__main__":

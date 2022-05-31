@@ -49,7 +49,7 @@ class Connection:
 
     def receive_message(self):
         response = self.reader.readline().decode()
-        print(response)
+        # print(response)
         msg = json.loads(response)
 
         return msg
