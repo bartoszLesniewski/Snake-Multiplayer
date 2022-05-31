@@ -8,7 +8,9 @@ from connection import Connection
 from messages import Message
 from player import Player
 from constans import *
-
+from tabulate import tabulate
+import io
+from contextlib import redirect_stdout
 
 class Game:
     def __init__(self, server_address):
@@ -213,7 +215,42 @@ class Game:
 
     def show_game_over_screen(self):
         print("GAME OVER")
-        self.menu.disable()
+        # self.menu.disable()
         self.menu = self.set_menu_parameters(70, "The end")
         self.menu.add.label("GAME OVER")
         self.menu.mainloop(self.screen)
+
+    def show_end_screen(self):
+        print("GAME OVER")
+        self.menu = self.set_menu_parameters(20, "The end")
+        self.menu.add.label(self.create_table([]), align=pygame_menu.locals.ALIGN_CENTER)
+        pygame_menu.widgets.Table("tab")
+        self.menu.add.button("Go back to menu", self.show_menu, background_color=GREEN)
+        self.menu.mainloop(self.screen)
+
+    def create_table(self, leaderboard):
+        headers = ["Rank", "Player name", "Points"]
+        spaces = "                   "
+        table = ""
+
+        for header in headers:
+            table += self.fill_word(header) + spaces
+
+        table += "\n"
+
+        for i, players in enumerate(leaderboard, start=1):
+            for player in players:
+                table += self.fill_word(str(i)) + spaces
+                table += self.fill_word(player["name"]) + spaces + "          "
+                table += self.fill_word(str(len(player["chunks"]))) + spaces
+                table += "\n"
+
+        return table
+
+    @staticmethod
+    def fill_word(word):
+        if len(word) < 11:
+            for _ in range(11 - len(word)):
+                word += " "
+
+        return word
