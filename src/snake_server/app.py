@@ -141,7 +141,7 @@ class App:
     ) -> None:
         conn = Connection(self, reader, writer)
         self.connections[conn.key] = conn
-        log.info("Accepted a connection from %s:%s", conn.host, conn.port)
+        log.info("Accepted a connection from %s", conn.key)
         await conn.run()
 
     async def create_session(self, owner: Connection, owner_name: str) -> Session:
