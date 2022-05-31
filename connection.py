@@ -15,6 +15,9 @@ class Connection:
     def __init__(self, server_address="127.0.0.1", server_port=8888):
         self.server_address = server_address
         self.server_port = server_port
+        self.reset()
+
+    def reset(self):
         self.session_code = None
         self.socket = socket.socket()
         self.writer = None

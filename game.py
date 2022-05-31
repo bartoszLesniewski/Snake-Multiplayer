@@ -19,9 +19,13 @@ class Game:
         pygame.display.set_caption("Snake Multiplayer")
         self.background = pygame.image.load("img/background.jpg")
 
-        self.player = None
-        self.connection = Connection(server_address)
+        self.server_address = server_address
         self.host = None
+        self.reset()
+
+    def reset(self):
+        self.player = None
+        self.connection = Connection(self.server_address)
         self.opponents = []
         self.apple = None
         self.menu = None
@@ -29,6 +33,7 @@ class Game:
     def show_menu(self):
         if self.menu is not None:
             self.menu.disable()
+            self.reset()
 
         self.menu = self.set_menu_parameters(60, "Main menu")
         self.menu.add.button("New game", self.menu_with_input, "NEW_GAME",  background_color=GREEN)
@@ -97,15 +102,19 @@ class Game:
             self.update_lobby()
 
     def update_lobby(self):
-        self.menu = self.set_menu_parameters(30, "Lobby", (0, 15))
+        self.menu = self.set_menu_parameters(30, "Lobby", (0, 10))
         self.menu.add.label("Waiting players:")
         info = " (you)"
         info += " (host)" if self.player == self.host else ""
         self.menu.add.label("- " + self.player.name + info)
 
-        for opponent in self.opponents:
-            info = " (host)" if opponent == self.host else ""
-            self.menu.add.label("- " + opponent.name + info)
+        for i in range(min(3, len(self.opponents))):
+            info = " (host)" if self.opponents[i] == self.host else ""
+            self.menu.add.label("- " + self.opponents[i].name + info)
+
+        if len(self.opponents) > 3:
+            others = len(self.opponents) - 3
+            self.menu.add.label("and " + str(others) + " others")
 
         if self.player == self.host:
             self.menu.add.label("Your lobby code: " + self.connection.session_code)
