@@ -16,11 +16,11 @@ log = logging.getLogger(__name__)
 CONFIG_SECTION_NAME = "snake_server"
 
 
-def config_get(config: configparser.ConfigParser, option: str) -> str:
+def _config_get(config: configparser.ConfigParser, option: str) -> str:
     return config.get(CONFIG_SECTION_NAME, option)
 
 
-def config_getint(
+def _config_getint(
     config: configparser.ConfigParser,
     option: str,
     *,
@@ -41,8 +41,8 @@ def config_getint(
 
 class App:
     def __init__(self) -> None:
-        self.host = "127.0.0.1"
-        self.port = 8888
+        self._host = "127.0.0.1"
+        self._port = 8888
         self.tick_interval = datetime.timedelta(milliseconds=50)
         #: players move once every `game_speed` ticks
         self.game_speed = 1
@@ -50,13 +50,13 @@ class App:
         self.grid_height = 30
         self.initial_chunk_amount = 4
         self.sessions: dict[str, Session] = {}
-        self.sessions_lock = asyncio.Lock()
+        self._sessions_lock = asyncio.Lock()
         self.connections: dict[str, Connection] = {}
 
     async def run(self) -> int:
-        self.setup_logging()
+        self._setup_logging()
         try:
-            self.load_config()
+            self._load_config()
         except (configparser.NoSectionError, configparser.NoOptionError) as exc:
             log.error(
                 "Failed to load configuration file (snake_server_config.ini): %s", exc
@@ -71,11 +71,11 @@ class App:
                 " snake_server_config.ini.example file."
             )
             return 2
-        await self.run_server()
+        await self._run_server()
         return 0
 
     async def close(self) -> None:
-        async with self.sessions_lock:
+        async with self._sessions_lock:
             for session in self.sessions.values():
                 session.stop()
             self.sessions.clear()
@@ -84,7 +84,7 @@ class App:
             await conn.close()
         self.connections.clear()
 
-    def setup_logging(self) -> None:
+    def _setup_logging(self) -> None:
         if os.path.exists("latest.log"):
             os.replace("latest.log", "previous.log")
 
@@ -101,21 +101,21 @@ class App:
             stream_handler = logging.StreamHandler(sys.stderr)
             root_logger.addHandler(stream_handler)
 
-    def load_config(self) -> None:
+    def _load_config(self) -> None:
         config = configparser.ConfigParser()
         with open("snake_server_config.ini") as fp:
             config.read_file(fp)
 
-        self.host = config_get(config, "host")
+        self._host = _config_get(config, "host")
         try:
-            self.port = config_getint(config, "port")
+            self._port = _config_getint(config, "port")
             self.tick_interval = datetime.timedelta(
-                milliseconds=config_getint(config, "tick_interval", fallback=50)
+                milliseconds=_config_getint(config, "tick_interval", fallback=50)
             )
-            self.game_speed = config_getint(
+            self.game_speed = _config_getint(
                 config, "game_speed", fallback=self.game_speed
             )
-            self.initial_chunk_amount = config_getint(
+            self.initial_chunk_amount = _config_getint(
                 config, "initial_chunk_amount", fallback=self.initial_chunk_amount
             )
         except ValueError as exc:
@@ -124,9 +124,11 @@ class App:
             )
             raise
 
-    async def run_server(self) -> int:
-        log.info("Starting a socket server on %s:%s...", self.host, self.port)
-        server = await asyncio.start_server(self.socket_handler, self.host, self.port)
+    async def _run_server(self) -> int:
+        log.info("Starting a socket server on %s:%s...", self._host, self._port)
+        server = await asyncio.start_server(
+            self._socket_handler, self._host, self._port
+        )
         log.info("Socket server started.")
 
         async with server:
@@ -136,7 +138,7 @@ class App:
 
         return 0
 
-    async def socket_handler(
+    async def _socket_handler(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
         conn = Connection(self, reader, writer)
@@ -146,7 +148,7 @@ class App:
 
     async def create_session(self, owner: Connection, owner_name: str) -> Session:
         invite_code = ""
-        async with self.sessions_lock:
+        async with self._sessions_lock:
             for _ in range(5):
                 invite_code = generate_invite_code()
                 if invite_code not in self.sessions:
@@ -168,6 +170,6 @@ class App:
         return session
 
     async def remove_session(self, session: Session) -> None:
-        async with self.sessions_lock:
+        async with self._sessions_lock:
             self.sessions.pop(session.code, None)
             log.info("Session with code %r ended.", session.code)

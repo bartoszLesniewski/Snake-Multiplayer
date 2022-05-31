@@ -20,11 +20,15 @@ log = logging.getLogger(__name__)
 
 class SessionPlayer:
     def __init__(self, session: Session, conn: Connection, name: str) -> None:
-        self.conn = conn
-        self.session = session
+        self._conn = conn
+        self._session = session
         self.name = name
         self.chunks: deque[tuple[int, int]] = deque()
         self.direction = Direction.UP
+
+    @property
+    def conn(self) -> Connection:
+        return self._conn
 
     @property
     def head(self) -> tuple[int, int]:
@@ -59,9 +63,9 @@ class SessionPlayer:
         offset_x, offset_y = self.direction.offset
         self.chunks.appendleft((head_x + offset_x, head_y + offset_y))
 
-        for apple_pos in self.session.apples:
+        for apple_pos in self._session.apples:
             if apple_pos == self.head:
-                self.session.apples.remove(apple_pos)
+                self._session.apples.remove(apple_pos)
                 break
         else:
             self.chunks.pop()
@@ -71,26 +75,38 @@ class Session:
     def __init__(
         self, *, app: App, owner: Connection, owner_name: str, code: str
     ) -> None:
-        self.app = app
-        self.owner = SessionPlayer(self, owner, owner_name)
-        self.code = code
+        self._app = app
+        self._owner = SessionPlayer(self, owner, owner_name)
+        self._code = code
 
         #: stores all players that were ever in the running session,
         #: regardless of whether they're still connected
-        self.players: dict[str, SessionPlayer] = {self.owner.key: self.owner}
+        self.players: dict[str, SessionPlayer] = {self._owner.key: self._owner}
         #: stores alive (and still connected) players
         self.alive_players: dict[str, SessionPlayer] = self.players.copy()
         #: list of leaderboard places in reverse order (last place is first entry)
         self.leaderboard: list[list[SessionPlayer]] = []
         #: list of deaths that happened at current tick (used for accurate leaderboard)
-        self.current_deaths: list[SessionPlayer] = []
+        self._current_deaths: list[SessionPlayer] = []
         self.apples: set[tuple[int, int]] = set()
 
-        self.running = False
-        self.task: asyncio.Task | None = None
-        self.tick = 0
+        self._running = False
+        self._task: asyncio.Task | None = None
+        self._tick = 0
         #: this might be a time in the past or future
-        self.last_tick_time = datetime.datetime.min
+        self._last_tick_time = datetime.datetime.min
+
+    @property
+    def owner(self) -> SessionPlayer:
+        return self._owner
+
+    @property
+    def code(self) -> str:
+        return self._code
+
+    @property
+    def running(self) -> bool:
+        return self._running
 
     def get_names(self) -> set[str]:
         return set(player.name for player in self.players.values())
@@ -110,18 +126,18 @@ class Session:
         return name
 
     async def start(self) -> None:
-        self.running = True
-        self.generate_player_chunks()
+        self._running = True
+        self._generate_player_chunks()
         await asyncio.gather(
             *(player.conn.send_session_start(self) for player in self.players.values())
         )
-        self.task = asyncio.create_task(self.run())
-        self.task.add_done_callback(self._task_error_handler)
+        self._task = asyncio.create_task(self._run())
+        self._task.add_done_callback(self._task_error_handler)
 
     def stop(self) -> None:
-        if self.task is not None:
-            self.task.cancel()
-        self.running = False
+        if self._task is not None:
+            self._task.cancel()
+        self._running = False
         for player in self.players.values():
             if player.conn.session is self:
                 player.conn.session = None
@@ -137,17 +153,17 @@ class Session:
                 exc_info=exc,
             )
 
-            self.running = False
+            self._running = False
             for player in self.players.values():
                 if player.conn.session is self:
                     player.conn.session = None
                 asyncio.create_task(player.conn.close())
-            asyncio.create_task(self.app.remove_session(self))
+            asyncio.create_task(self._app.remove_session(self))
 
-    def generate_player_chunks(self) -> None:
-        distance = self.app.grid_width / (len(self.alive_players) + 1)
-        y_center = self.app.grid_height // 2
-        chunk_amount = self.app.initial_chunk_amount
+    def _generate_player_chunks(self) -> None:
+        distance = self._app.grid_width / (len(self.alive_players) + 1)
+        y_center = self._app.grid_height // 2
+        chunk_amount = self._app.initial_chunk_amount
         y_start = y_center - (chunk_amount // 2)
         y_stop = y_center + (chunk_amount // 2) + (chunk_amount % 2)
 
@@ -156,9 +172,11 @@ class Session:
             for y in range(y_start, y_stop):
                 player.chunks.append((x, y))
 
-    def get_next_sleep_time(self) -> float:
-        self.last_tick_time += self.app.tick_interval
-        sleep_delta = self.last_tick_time - datetime.datetime.now(datetime.timezone.utc)
+    def _get_next_sleep_time(self) -> float:
+        self._last_tick_time += self._app.tick_interval
+        sleep_delta = self._last_tick_time - datetime.datetime.now(
+            datetime.timezone.utc
+        )
         ret = sleep_delta.total_seconds()
         if ret < 0:
             log.warning("Session %r is behind!", self.code)
@@ -166,25 +184,25 @@ class Session:
 
     def get_state(self) -> dict[str, Any]:
         return {
-            "tick": self.tick,
+            "tick": self._tick,
             "apples": [list(apple_pos) for apple_pos in self.apples],
             "alive_players": [
                 player.to_dict() for player in self.alive_players.values()
             ],
         }
 
-    async def run(self) -> None:
-        self.last_tick_time = datetime.datetime.now(datetime.timezone.utc)
+    async def _run(self) -> None:
+        self._last_tick_time = datetime.datetime.now(datetime.timezone.utc)
         while len(self.alive_players) > 1:
-            self.update_leaderboard()
-            self.tick += 1
+            self._update_leaderboard()
+            self._tick += 1
 
-            if self.update_positions():
-                self.handle_wall_deaths()
-                self.handle_tail_self_cutting()
-                self.handle_collision_deaths()
+            if self._update_positions():
+                self._handle_wall_deaths()
+                self._handle_tail_self_cutting()
+                self._handle_collision_deaths()
 
-            self.generate_apples()
+            self._generate_apples()
 
             # broadcast the state update to all connections
             state = self.get_state()
@@ -196,17 +214,17 @@ class Session:
             )
 
             # sleep until next tick
-            await asyncio.sleep(self.get_next_sleep_time())
+            await asyncio.sleep(self._get_next_sleep_time())
 
-        await self.finish_game()
+        await self._finish_game()
 
-    async def finish_game(self) -> None:
-        self.update_leaderboard()
+    async def _finish_game(self) -> None:
+        self._update_leaderboard()
         if self.alive_players:
             # this loop should always only have a single iteration
             for player in self.alive_players.values():
-                self.current_deaths.append(player)
-            self.update_leaderboard()
+                self._current_deaths.append(player)
+            self._update_leaderboard()
 
         leaderboard_data = [
             [p.to_dict() for p in place] for place in reversed(self.leaderboard)
@@ -218,19 +236,19 @@ class Session:
             )
         )
 
-        await self.app.remove_session(self)
+        await self._app.remove_session(self)
 
-    def update_leaderboard(self) -> None:
-        if not self.current_deaths:
+    def _update_leaderboard(self) -> None:
+        if not self._current_deaths:
             return
         keyfunc = lambda p: len(p.chunks)
-        self.current_deaths.sort(key=keyfunc)
-        for _, place in itertools.groupby(self.current_deaths, key=keyfunc):
+        self._current_deaths.sort(key=keyfunc)
+        for _, place in itertools.groupby(self._current_deaths, key=keyfunc):
             self.leaderboard.append(list(place))
-        self.current_deaths.clear()
+        self._current_deaths.clear()
 
-    def update_positions(self) -> bool:
-        if self.tick % self.app.game_speed:
+    def _update_positions(self) -> bool:
+        if self._tick % self._app.game_speed:
             return False
 
         for player in self.alive_players.values():
@@ -238,16 +256,21 @@ class Session:
 
         return True
 
-    def handle_wall_deaths(self) -> None:
+    def _handle_wall_deaths(self) -> None:
         to_remove: list[str] = []
         for player in self.alive_players.values():
             x, y = player.head
-            if x < 0 or x >= self.app.grid_width or y < 0 or y >= self.app.grid_height:
+            if (
+                x < 0
+                or x >= self._app.grid_width
+                or y < 0
+                or y >= self._app.grid_height
+            ):
                 to_remove.append(player.key)
         for key in to_remove:
-            self.current_deaths.append(self.alive_players.pop(key))
+            self._current_deaths.append(self.alive_players.pop(key))
 
-    def handle_tail_self_cutting(self) -> None:
+    def _handle_tail_self_cutting(self) -> None:
         """Handle a collision with your own tail by cutting it in that spot."""
         for player in self.alive_players.values():
             try:
@@ -258,12 +281,12 @@ class Session:
                 for _ in range(len(player.chunks) - idx):
                     player.chunks.pop()
 
-    def handle_collision_deaths(self) -> None:
-        self.handle_tail_collisions()
-        self.handle_head_overlap_collisions()
-        self.handle_head_on_collisions()
+    def _handle_collision_deaths(self) -> None:
+        self._handle_tail_collisions()
+        self._handle_head_overlap_collisions()
+        self._handle_head_on_collisions()
 
-    def handle_tail_collisions(self) -> None:
+    def _handle_tail_collisions(self) -> None:
         """
         Handle 'tail collisions'.
 
@@ -320,12 +343,12 @@ class Session:
                     potential_losers.append(p1)
                 if p2.head in p1.chunks:
                     potential_losers.append(p2)
-                deaths.update(choose_losers(potential_losers))
+                deaths.update(_choose_losers(potential_losers))
 
         for key in deaths:
-            self.current_deaths.append(self.alive_players.pop(key))
+            self._current_deaths.append(self.alive_players.pop(key))
 
-    def handle_head_overlap_collisions(self) -> None:
+    def _handle_head_overlap_collisions(self) -> None:
         """
         Handle 'head overlap collisions'.
 
@@ -353,10 +376,10 @@ class Session:
 
         for players in overlapping_heads.values():
             if len(players) > 1:
-                for key in choose_losers(players):
-                    self.current_deaths.append(self.alive_players.pop(key))
+                for key in _choose_losers(players):
+                    self._current_deaths.append(self.alive_players.pop(key))
 
-    def handle_head_on_collisions(self) -> None:
+    def _handle_head_on_collisions(self) -> None:
         """
         Handle 'head-on collisions'.
 
@@ -383,12 +406,12 @@ class Session:
             if p1.key in deaths or p2.key in deaths:
                 continue
             if p1.chunks[0] == p2.chunks[1] and p2.chunks[0] == p1.chunks[1]:
-                deaths.update(choose_losers((p1, p2)))
+                deaths.update(_choose_losers((p1, p2)))
 
         for key in deaths:
-            self.current_deaths.append(self.alive_players.pop(key))
+            self._current_deaths.append(self.alive_players.pop(key))
 
-    def generate_apples(self) -> None:
+    def _generate_apples(self) -> None:
         # for now, there can only be one apple in the game
         if self.apples:
             return
@@ -400,8 +423,8 @@ class Session:
 
         while True:
             apple_pos = (
-                random.randrange(self.app.grid_width),
-                random.randrange(self.app.grid_height),
+                random.randrange(self._app.grid_width),
+                random.randrange(self._app.grid_height),
             )
             if apple_pos not in taken_positions:
                 break
@@ -442,10 +465,10 @@ class Session:
                 # tried to disconnect a player that is not part of the session
                 raise
 
-        self.current_deaths.append(player)
+        self._current_deaths.append(player)
 
-        if self.alive_players and self.owner == player:
-            self.owner = next(iter(self.alive_players.values()))
+        if self.alive_players and self._owner == player:
+            self._owner = next(iter(self.alive_players.values()))
 
         await asyncio.gather(
             *(
@@ -457,17 +480,17 @@ class Session:
         if len(self.alive_players) <= 1:
             # make sure we don't give back control to the caller
             # before we send session_end message
-            if self.task is not None:
-                await self.task
+            if self._task is not None:
+                await self._task
 
     async def _disconnect_from_not_running(self, connection: Connection) -> None:
         del self.players[connection.key]
         player = self.alive_players.pop(connection.key)
 
         if not self.players:
-            await self.app.remove_session(self)
-        elif self.owner == player:
-            self.owner = next(iter(self.players.values()))
+            await self._app.remove_session(self)
+        elif self._owner == player:
+            self._owner = next(iter(self.players.values()))
 
         await asyncio.gather(
             *(
@@ -481,7 +504,7 @@ class Session:
         await connection.send_session_leave(self, connection.key)
 
 
-def choose_losers(players: Sequence[SessionPlayer]) -> Generator[str, None, None]:
+def _choose_losers(players: Sequence[SessionPlayer]) -> Generator[str, None, None]:
     if not players:
         return
     if len(players) == 1:
