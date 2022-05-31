@@ -33,9 +33,9 @@ class Game:
         self.menu.mainloop(self.screen)
 
     @staticmethod
-    def set_menu_parameters(font_size, title):
+    def set_menu_parameters(font_size, title, margin=(0, 30)):
         font = pygame_menu.font.FONT_OPEN_SANS_BOLD
-        my_theme = Theme(title_font=font, widget_font=font, widget_font_size=font_size, widget_margin=(0, 30),
+        my_theme = Theme(title_font=font, widget_font=font, widget_font_size=font_size, widget_margin=margin,
                          title_font_color=WHITE, widget_font_color=WHITE,
                          title_background_color=GREEN,
                          selection_color=WHITE,
@@ -65,7 +65,7 @@ class Game:
         self.menu.mainloop(self.screen)
 
     def lobby(self, player_input, choice, code):
-        self.menu.disable()
+        # self.menu.disable()
         player_key = self.connection.connect()
         self.player = Player(player_input.get_value(), player_key)
 
@@ -74,6 +74,7 @@ class Game:
             self.host = self.player
         elif choice == "JOIN_GAME":
             msg_data = self.connection.join_session(self.player.name, code.get_value())
+            self.player.name = msg_data["player"]["name"]
             self.add_opponents(msg_data["players"])
             self.find_host(msg_data["owner_key"])
 
@@ -92,7 +93,7 @@ class Game:
             self.update_lobby()
 
     def update_lobby(self):
-        self.menu = self.set_menu_parameters(30, "Lobby")
+        self.menu = self.set_menu_parameters(30, "Lobby", (0, 15))
         self.menu.add.label("Waiting players:")
         info = " (you)"
         info += " (host)" if self.player == self.host else ""
@@ -123,6 +124,7 @@ class Game:
 
     def add_opponents(self, players):
         print(str(players))
+        self.opponents.clear()
         for opponent in players:
             if opponent["name"] != self.player.name:
                 self.opponents.append(Player(opponent["name"], opponent["key"]))
